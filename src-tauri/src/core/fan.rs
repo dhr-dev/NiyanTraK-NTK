@@ -5,7 +5,7 @@ pub fn apply_fan_mode(mode: &str) -> String {
 
     let level = match mode {
         "silent" => "19:19",
-        "balanced" => "30:30",
+        "balanced" | "bed" => "30:30",
         "medium" => "30:30",
         "high" => "34:34",
         "turbo" => "34:34",

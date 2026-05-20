@@ -20,7 +20,7 @@ export interface RyzenAdjResponse {
 })
 export class RyzenService {
 
-  async setMode(mode: 'performance' | 'balanced' | 'silent'): Promise<RyzenAdjResponse> {
+  async setMode(mode: 'performance' | 'balanced' | 'silent' | 'bed'): Promise<RyzenAdjResponse> {
     try {
       const res = await invoke<RyzenAdjResponse>('set_cpu_mode', { mode });
       console.log('[RyzenService] setMode response:', res);

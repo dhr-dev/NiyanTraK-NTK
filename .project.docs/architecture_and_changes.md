@@ -44,7 +44,7 @@ graph TD
     - **Upper Range (Levels 30 to 39)**: Starts at `4800 RPM` and increments linearly by `100 RPM` per step up to Level `39` (`5700 RPM`). Formula: `RPM = 4800 + (level - 30) * 100`.
 - **System Profile Mappings (Tauri Backend)**:
   - `silent` / `battery` => level `19:19` (`2500 RPM`)
-  - `balanced` / `medium` / `laptop` / `table` => level `30:30` (`4800 RPM`)
+  - `balanced` / `bed` / `medium` / `laptop` / `table` => level `30:30` (`4800 RPM`)
   - `high` / `turbo` / `performance` => level `34:34` (`5200 RPM`)
   - `max` / `extreme` => level `39:39` (`5700 RPM`)
 
@@ -66,7 +66,7 @@ Profiles are predefined system configurations designed for specific power and ac
 - **Real-Time Polling**: The frontend triggers a background scheduler to poll CPU diagnostics (`get_cpu_status`) every 2 seconds, parsing human-readable table outputs dynamically into active values (`STAPM Limit`, `Fast PPT Limit`, `Slow PPT Limit`, `Temp Throttle Limit`).
 - **Standard Presets**:
   - `Silent` $\rightarrow$ 15W TDP / 70°C throttle
-  - `Balanced` $\rightarrow$ 35W TDP / 80°C throttle
+  - `Bed Mode` $\rightarrow$ 35W TDP / 80°C throttle
   - `Performance` $\rightarrow$ 55W TDP / 90°C throttle
   - `Custom` $\rightarrow$ 8W to 55W customized slider
 
@@ -78,4 +78,27 @@ Profiles are predefined system configurations designed for specific power and ac
 - **Safety Termination**: If active, the stress test is automatically stopped upon the destruction or shutdown of the Tauri frontend application window, preventing background processor drain.
 - **Dynamic Island Overlay**: Designed as a floating top-center capsule (`.dynamic-island-container`) that expands with a spring transition animation when the stress test is active. It is styled with `position: fixed;` to ensure it remains sticky and fully visible at the top of the viewport even while scrolling.
 
+---
 
+## 4. Build System and Styling Configuration
+- **Tailwind CSS version**: v4
+- **PostCSS integration**: Configured through `postcss.config.json` (and `postcss.config.js`) in the project root utilizing the new `@tailwindcss/postcss` builder plugin package for v4.
+- **Global Stylesheet**: `@import url(...)` for Google Fonts comes first, then `@import "tailwindcss"` — order is required by CSS spec.
+
+## 5. UI Architecture — Single Standalone Component
+All UI logic, template, and scoped CSS have been consolidated into `src/app/app.component.ts` as a single Angular standalone component using `template: \`...\`` and `styles: [\`...\`]` inline. The separate `.html` and child component `.ts` files are no longer loaded at runtime (the decorator uses `template:` not `templateUrl:`).
+
+### Visual Design Tokens (enforced)
+| Token            | Value     | Usage                          |
+|------------------|-----------|--------------------------------|
+| Window bg        | `#0f0f0f` | `app-shell` background         |
+| Topbar / Rail bg | `#0d0d0d` | `topbar`, `nav-rail`, `monitor-strip` |
+| Content area bg  | `#111111` | `main-body`                    |
+| Card bg          | `#171717` | `.card`, `.fan-card`           |
+| Interactive bg   | `#1e1e1e` | Inputs, seg controls           |
+| Separator border | `#222222` | All section dividers           |
+| Card border      | `#242424` | Card outlines                  |
+| Accent blue      | `#3b82f6` | Active states, toggles, sliders|
+| Accent green     | `#22c55e` | Bar fill < 70% of limit        |
+| Accent amber     | `#f59e0b` | Bar fill 70–90% of limit       |
+| Accent red       | `#ef4444` | Bar fill > 90%, stress state   |
