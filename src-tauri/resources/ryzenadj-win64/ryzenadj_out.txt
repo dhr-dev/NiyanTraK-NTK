@@ -1,0 +1,2 @@
+Unable to get os_access Obj, check permission
+Unable to init ryzenadj
