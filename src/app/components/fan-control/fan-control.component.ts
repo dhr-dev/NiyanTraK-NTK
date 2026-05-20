@@ -1,188 +1,167 @@
-import { Component, Input, Output, EventEmitter, OnChanges, SimpleChanges } from '@angular/core';
+import { Component, Input, Output, EventEmitter } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { ToggleComponent } from '../../shared/toggle/toggle.component';
-import { RangeSliderComponent } from '../../shared/range-slider/range-slider.component';
+import { FormsModule } from '@angular/forms';
 
 @Component({
   selector: 'app-fan-control',
   standalone: true,
-  imports: [CommonModule, ToggleComponent, RangeSliderComponent],
+  imports: [CommonModule, FormsModule],
   template: `
-    <div class="fan-control-panel flex flex-col w-full select-none">
-      <!-- Section Title -->
-      <h2 class="text-[13px] font-medium text-[#ccc] uppercase tracking-wider mb-2">Cooling Fan Control</h2>
-      
-      <!-- Card Container -->
-      <div class="bg-card-bg border border-border-muted rounded-[6px] p-4 flex flex-col gap-4">
-        
-        <!-- Toggle Row -->
-        <div class="flex items-center justify-between border-b border-border-muted pb-3">
-          <span class="text-[11px] text-[#aaa]">Manual Override</span>
-          <app-toggle 
-            [on]="manual" 
-            (onChange)="toggleManual($event)"
-          ></app-toggle>
-        </div>
-        
-        <!-- Slider Row (Visible when manual is true) -->
-        <div 
-          class="flex flex-col gap-2 transition-all duration-200"
-          [class.opacity-35]="!manual"
-          [class.pointer-events-none]="!manual"
-        >
-          <div class="flex items-center justify-between text-[9px] text-[#444] uppercase tracking-wider">
-            <span>Silent</span>
-            <span>Max</span>
-          </div>
-          
-          <app-range-slider
-            [min]="8"
-            [max]="39"
-            [step]="1"
-            [value]="fanLevel"
-            [disabled]="!manual"
-            (valueChange)="updateFanLevel($event)"
-          ></app-range-slider>
-          
-          <div class="flex items-baseline justify-between mt-1">
-            <span class="text-[13px] font-medium text-[#ccc]">{{ rpm }} RPM</span>
-            <span class="text-[11px] text-[#555] font-normal uppercase">{{ percent }}% Duty Cycle</span>
-          </div>
-        </div>
-        
-        <!-- Apply button -->
-        <button
-          type="button"
-          (click)="apply()"
-          [disabled]="!manual"
-          class="apply-btn flex items-center justify-center w-full h-[30px] rounded-[4px] bg-[#1a2a3a] border border-[#2a4a6a] text-[11px] font-medium text-accent-blue transition-colors duration-150"
-        >
-          Apply Changes
+    <section class="card fan-card">
+      <div class="card-header">
+        <h2 class="section-title">Fan Control</h2>
+        <button class="pill-toggle" [class.pill-toggle--on]="enabled"
+          (click)="toggle.emit()" role="switch" [attr.aria-checked]="enabled">
+          <span class="pill-thumb"></span>
         </button>
-        
-        <!-- Rotating SVG Fan Icon -->
-        <div class="flex items-center justify-center pt-2">
-          <div 
-            class="fan-wrapper flex items-center justify-center spin-fan"
-            [style.--spin-duration]="spinDuration"
-            [class.paused]="!manual && percent === 0"
-          >
-            <svg 
-              xmlns="http://www.w3.org/2000/svg" 
-              viewBox="0 0 100 100" 
-              class="w-[40px] h-[40px] text-[#333] fill-[#2a2a2a]"
-            >
-              <!-- Center Hub -->
-              <circle cx="50" cy="50" r="10" fill="#333" />
-              <!-- Outer Ring -->
-              <circle cx="50" cy="50" r="46" stroke="#222" stroke-width="2" fill="none" />
-              <!-- Blade 1 -->
-              <path d="M50 40 C45 25 35 15 50 10 C65 15 55 25 50 40 Z" />
-              <!-- Blade 2 -->
-              <path d="M60 50 C75 45 85 35 90 50 C85 65 75 55 60 50 Z" />
-              <!-- Blade 3 -->
-              <path d="M50 60 C55 75 65 85 50 90 C35 85 45 75 50 60 Z" />
-              <!-- Blade 4 -->
-              <path d="M40 50 C25 55 15 65 10 50 C15 35 25 45 40 50 Z" />
-              <!-- Small Hub Core -->
-              <circle cx="50" cy="50" r="4" fill="#666" />
-            </svg>
-          </div>
-        </div>
-        
       </div>
-    </div>
+
+      <div class="slider-block" [class.slider-block--disabled]="!enabled">
+        <div class="slider-labels">
+          <span class="slider-edge">Silent</span>
+          <span class="slider-edge">Max</span>
+        </div>
+        <input type="range" class="range-slider" id="fan-slider"
+          min="8" max="39" step="1"
+          [(ngModel)]="level"
+          (ngModelChange)="levelChange.emit($event)"
+          [disabled]="!enabled"
+          [ngStyle]="{'--fill-pct': fanSliderFill}"/>
+        <div class="fan-readout">
+          <span class="readout-big">{{ enabled ? getRpm(level) + ' RPM' : 'Auto' }}</span>
+          <span class="readout-sub">{{ enabled ? (getPercent(level) + '% · L' + level) : 'Thermal policy' }}</span>
+        </div>
+      </div>
+
+      <button class="apply-btn" [disabled]="!enabled" (click)="apply.emit()">Apply Fan</button>
+    </section>
   `,
   styles: [`
-    .apply-btn:hover:not(:disabled) {
-      background-color: #1e3040;
+    /* ─── CARD ─── */
+    .card {
+      background: #171717;
+      border: 1px solid #242424;
+      border-radius: 14px;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      height: 100%;
     }
-    .apply-btn:disabled {
-      opacity: 0.4;
-      cursor: not-allowed;
+    .fan-card { flex: 1; }
+    .card-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
     }
-    
-    @keyframes spin {
-      from { transform: rotate(0deg); }
-      to { transform: rotate(360deg); }
+    .section-title { font-size: 13px; font-weight: 500; color: #bbb; }
+
+    /* ─── PILL TOGGLE ─── */
+    .pill-toggle {
+      position: relative;
+      width: 28px; height: 14px;
+      border-radius: 9999px;
+      background: #2a2a2a;
+      border: none;
+      transition: background 150ms ease;
+      padding: 0;
+      flex-shrink: 0;
     }
-    .spin-fan {
-      animation: spin var(--spin-duration, 3s) linear infinite;
+    .pill-toggle--on { background: #3b82f6; }
+    .pill-thumb {
+      position: absolute;
+      top: 2px; left: 2px;
+      width: 10px; height: 10px;
+      border-radius: 50%;
+      background: #fff;
+      transition: transform 150ms ease;
+      pointer-events: none;
     }
-    .spin-fan.paused {
-      animation-play-state: paused;
+    .pill-toggle--on .pill-thumb { transform: translateX(14px); }
+
+    /* ─── SLIDER ─── */
+    .slider-block { display: flex; flex-direction: column; gap: 6px; }
+    .slider-block--disabled { opacity: 0.35; pointer-events: none; }
+    .slider-labels { display: flex; justify-content: space-between; }
+    .slider-edge { font-size: 10px; color: #444; }
+
+    .range-slider {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 100%;
+      height: 3px;
+      border-radius: 9999px;
+      background: linear-gradient(
+        to right,
+        #3b82f6 var(--fill-pct, 0%),
+        #2a2a2a var(--fill-pct, 0%)
+      );
+      outline: none;
+      cursor: pointer;
+      display: block;
     }
+    .range-slider::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 13px; height: 13px;
+      border-radius: 50%;
+      background: #3b82f6;
+      border: none;
+      cursor: pointer;
+      transition: transform 150ms ease;
+      position: relative;
+      z-index: 1;
+    }
+    .range-slider::-webkit-slider-thumb:hover { transform: scale(1.2); }
+    .range-slider::-moz-range-thumb {
+      width: 13px; height: 13px;
+      border-radius: 50%;
+      background: #3b82f6;
+      border: none;
+      cursor: pointer;
+    }
+    .range-slider:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    .fan-readout { display: flex; flex-direction: column; gap: 1px; }
+    .readout-big { font-size: 22px; font-weight: 500; color: #e0e0e0; line-height: 1.1; }
+    .readout-sub { font-size: 10px; color: #555; }
+
+    /* ─── APPLY BUTTON ─── */
+    .apply-btn {
+      width: 100%; height: 34px;
+      background: #1a2a3a; border: 1px solid #2a4a6a;
+      border-radius: 8px; color: #3b82f6;
+      font-size: 12px; font-weight: 500;
+      transition: background 150ms;
+      display: flex; align-items: center; justify-content: center;
+      margin-top: auto;
+    }
+    .apply-btn:hover:not(:disabled) { background: #1e3040; }
+    .apply-btn:disabled { opacity: 0.35; cursor: not-allowed; }
   `]
 })
-export class FanControlComponent implements OnChanges {
-  @Input() fanLevel: number = 8;
-  @Input() manual: boolean = true;
-  
-  @Output() manualChange = new EventEmitter<boolean>();
-  @Output() fanLevelChange = new EventEmitter<number>();
-  @Output() onApply = new EventEmitter<void>();
+export class FanControlComponent {
+  @Input() enabled: boolean = true;
+  @Input() level: number = 30;
+  @Output() toggle = new EventEmitter<void>();
+  @Output() levelChange = new EventEmitter<number>();
+  @Output() apply = new EventEmitter<void>();
 
-  rpm: number = 800;
-  percent: number = 14;
-  spinDuration: string = '3s';
-
-  ngOnChanges(changes: SimpleChanges) {
-    this.recalculateMetrics();
+  get fanSliderFill(): string {
+    return `${((this.level - 8) / 31) * 100}%`;
   }
 
-  toggleManual(val: boolean) {
-    this.manual = val;
-    this.manualChange.emit(val);
-    this.recalculateMetrics();
+  getRpm(level: number): number {
+    if (level === 8)                return 800;
+    if (level === 9)                return 1200;
+    if (level >= 10 && level <= 19) return 1600 + (level - 10) * 100;
+    if (level === 29)               return 4200;
+    if (level >= 20 && level <= 28) return 3200 + (level - 20) * 100;
+    if (level >= 30)                return 4800 + (level - 30) * 100;
+    return 800;
   }
 
-  updateFanLevel(val: number) {
-    this.fanLevel = val;
-    this.fanLevelChange.emit(val);
-    this.recalculateMetrics();
-  }
-
-  apply() {
-    this.onApply.emit();
-  }
-
-  private recalculateMetrics() {
-    // If auto mode, let's show default quiet metrics
-    if (!this.manual) {
-      this.rpm = 1200; // default auto baseline
-      this.percent = 21;
-      this.spinDuration = '4s'; // slow baseline rotation
-      return;
-    }
-
-    // Manual RPM calculations matching system specs
-    const lvl = this.fanLevel;
-    if (lvl === 8) {
-      this.rpm = 800;
-    } else if (lvl === 9) {
-      this.rpm = 1200;
-    } else if (lvl >= 10 && lvl <= 19) {
-      this.rpm = 1600 + (lvl - 10) * 100;
-    } else if (lvl === 29) {
-      this.rpm = 4200;
-    } else if (lvl >= 20 && lvl <= 28) {
-      this.rpm = 3200 + (lvl - 20) * 100;
-    } else if (lvl >= 30) {
-      this.rpm = 4800 + (lvl - 30) * 100;
-    } else {
-      this.rpm = 800;
-    }
-
-    this.percent = Math.round((this.rpm / 5700) * 100);
-
-    // Dynamic rotation speed calculation
-    if (this.percent === 0) {
-      this.spinDuration = '0s';
-    } else {
-      // 100% duty cycle maps to 0.15s spin duration (extremely fast)
-      // 14% duty cycle maps to 3.5s spin duration (slow)
-      const duration = Math.max(0.12, 3.8 - (this.percent / 100) * 3.65);
-      this.spinDuration = `${duration.toFixed(2)}s`;
-    }
+  getPercent(level: number): number {
+    return Math.round((this.getRpm(level) / 5700) * 100);
   }
 }

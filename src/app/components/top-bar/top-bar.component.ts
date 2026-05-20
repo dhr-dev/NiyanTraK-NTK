@@ -6,26 +6,44 @@ import { CommonModule } from '@angular/common';
   standalone: true,
   imports: [CommonModule],
   template: `
-    <div class="top-bar flex items-center justify-between px-4 h-[36px] bg-bar-rail border-b border-border-muted select-none">
-      <!-- Left side: Brand Logo -->
-      <div class="flex items-center gap-2">
-        <span class="w-[6px] h-[6px] rounded-full bg-accent-blue"></span>
-        <span class="text-[13px] font-medium text-[#e0e0e0] leading-none">VictusDeck</span>
-        <span class="text-[10px] text-[#444] leading-none">HP Victus Tuning Suite</span>
+    <!-- TOP BAR -->
+    <header class="topbar">
+      <div class="brand">
+        <span class="brand-name">VictusDeck</span>
+        <span class="brand-sep">·</span>
+        <span class="brand-sub">HP Victus Tuning Suite</span>
       </div>
-      
-      <!-- Right side: Status Pill -->
-      <div class="status-pill px-3 py-1 rounded-[4px] bg-[#1e1e1e] border border-[#2a2a2a] text-[#888] text-[10px] leading-none">
-        {{ status }}
-      </div>
-    </div>
+      <div class="status-pill">{{ statusText }}</div>
+    </header>
   `,
   styles: [`
-    .top-bar {
-      /* Pinned width layout helper */
+    /* ─── TOPBAR ─── */
+    .topbar {
+      height: 44px;
+      min-height: 44px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 16px;
+      background: #0d0d0d;
+      border-bottom: none;
+      flex-shrink: 0;
+      user-select: none;
+    }
+    .brand { display: flex; align-items: center; gap: 8px; }
+    .brand-name { font-size: 13px; font-weight: 600; color: #e0e0e0; }
+    .brand-sep { color: #333; font-size: 12px; }
+    .brand-sub { font-size: 10px; color: #444; }
+    .status-pill {
+      padding: 4px 12px;
+      border-radius: 8px;
+      background: #1e1e1e;
+      border: 1px solid #2a2a2a;
+      font-size: 11px;
+      color: #888;
     }
   `]
 })
 export class TopBarComponent {
-  @Input() status: string = 'Bed Mode · 25W · 45°C';
+  @Input() statusText: string = '';
 }

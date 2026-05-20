@@ -6,13 +6,19 @@ import { CommonModule } from '@angular/common';
   standalone: true,
   imports: [CommonModule],
   template: `
-    <div class="footer-strip flex items-center justify-center h-[24px] bg-deep-chrome border-t border-[#1a1a1a] select-none text-[10px] text-[#333] tracking-[0.05em]">
-      v0.1  ·  Made with passion by DhruvilGajjar
-    </div>
+    <!-- FOOTER -->
+    <footer class="footer-strip">
+      v0.1 &nbsp;·&nbsp; Made with passion by DhruvilGajjar
+    </footer>
   `,
   styles: [`
+    /* ─── FOOTER ─── */
     .footer-strip {
-      /* Pinned bottom helper */
+      height: 24px; min-height: 24px;
+      background: #0a0a0a; border-top: 1px solid #1a1a1a;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 10px; color: #333; letter-spacing: 0.05em;
+      flex-shrink: 0; user-select: none;
     }
   `]
 })
