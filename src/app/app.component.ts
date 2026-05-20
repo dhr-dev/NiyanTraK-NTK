@@ -28,6 +28,11 @@ export class AppComponent implements OnInit, OnDestroy {
   cpuLimits: any = null;
   cpuErrorMsg = '';
 
+  // Stress Test State
+  stressActive = false;
+  stressDuration = 0;
+  private stressTimerInterval: any = null;
+
   // Toast System
   toasts: { message: string; type: 'success' | 'error' | 'info'; id: number }[] = [];
   private toastIdCounter = 0;
@@ -43,11 +48,18 @@ export class AppComponent implements OnInit, OnDestroy {
 
   ngOnInit() {
     this.startCpuStatusPolling();
+    this.checkStressStatus();
   }
 
   ngOnDestroy() {
     if (this.pollInterval) {
       clearInterval(this.pollInterval);
+    }
+    if (this.stressTimerInterval) {
+      clearInterval(this.stressTimerInterval);
+    }
+    if (this.stressActive) {
+      this.ryzenService.stopCpuStress();
     }
   }
 
@@ -197,6 +209,41 @@ export class AppComponent implements OnInit, OnDestroy {
         this.profileFan = 34; // 5200 RPM
       } else if (p.fan === 'max') {
         this.profileFan = 39; // 5700 RPM
+      }
+    }
+  }
+
+  async checkStressStatus() {
+    const active = await this.ryzenService.getStressStatus();
+    this.stressActive = active;
+    if (active && !this.stressTimerInterval) {
+      this.stressDuration = 0;
+      this.stressTimerInterval = setInterval(() => {
+        this.stressDuration++;
+      }, 1000);
+    }
+  }
+
+  async toggleStressTest() {
+    if (this.stressActive) {
+      const active = await this.ryzenService.stopCpuStress();
+      this.stressActive = active;
+      if (this.stressTimerInterval) {
+        clearInterval(this.stressTimerInterval);
+        this.stressTimerInterval = null;
+      }
+      this.showToast('CPU Stress Test terminated.', 'info');
+    } else {
+      const active = await this.ryzenService.startCpuStress();
+      this.stressActive = active;
+      if (active) {
+        this.stressDuration = 0;
+        this.stressTimerInterval = setInterval(() => {
+          this.stressDuration++;
+        }, 1000);
+        this.showToast('CPU Stress Test started (100% Load Applied).', 'success');
+      } else {
+        this.showToast('Failed to start CPU Stress Test.', 'error');
       }
     }
   }

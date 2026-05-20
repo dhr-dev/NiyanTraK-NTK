@@ -69,3 +69,13 @@ Profiles are predefined system configurations designed for specific power and ac
   - `Balanced` $\rightarrow$ 35W TDP / 80°C throttle
   - `Performance` $\rightarrow$ 55W TDP / 90°C throttle
   - `Custom` $\rightarrow$ 8W to 55W customized slider
+
+### 3.3 CPU Stress Test Subsystem
+- **Execution Module**: `src-tauri/src/core/stress.rs`
+- **Execution Mode**: Spawns multithreaded OS worker threads matching the system's logical core capacity (via `std::thread::available_parallelism()`).
+- **Core Workload**: Executes synthetic math loops (`sqrt().sin().cos()`) utilizing both FPU and ALU execution pipelines to guarantee full, 100% CPU thread saturation.
+- **Yielding Safety Design**: To prevent kernel scheduling blockages and interface freezes, each thread cooperatively invokes `thread::yield_now()`. This ensures the Tauri main thread and Windows window manager maintain high responsiveness while maximum thermal/wattage load is placed on the hardware registers.
+- **Safety Termination**: If active, the stress test is automatically stopped upon the destruction or shutdown of the Tauri frontend application window, preventing background processor drain.
+- **Dynamic Island Overlay**: Designed as a floating top-center capsule (`.dynamic-island-container`) that expands with a spring transition animation when the stress test is active. It is styled with `position: fixed;` to ensure it remains sticky and fully visible at the top of the viewport even while scrolling.
+
+

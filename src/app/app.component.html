@@ -1,5 +1,20 @@
 <div class="app-container">
 
+  <!-- Top Centered Dynamic Island Overlay -->
+  <div class="dynamic-island-container">
+    <div class="dynamic-island" [class.island-active]="stressActive">
+      <div class="island-pill-content">
+        <span class="island-status-dot" [class.pulse-dot-red]="stressActive"></span>
+        <span class="island-status-text">{{ stressActive ? 'STRESS ACTIVE' : 'System Ready' }}</span>
+      </div>
+      
+      <div class="island-expanded-metrics" *ngIf="stressActive">
+        <span class="island-timer">{{ stressDuration }}s</span>
+        <button class="island-stop-btn" (click)="toggleStressTest()">Stop</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Elegant Minimalist Toaster -->
   <div class="toaster-container">
     <div *ngFor="let toast of toasts" class="toast-card" [ngClass]="'toast-' + toast.type">
@@ -286,6 +301,37 @@
               RyzenAdj requires elevated Administrator permissions to query CPU configurations. Please run VictusDeck as Administrator.
             </p>
           </div>
+        </div>
+      </div>
+
+      <!-- CPU Stress Test Card -->
+      <div class="glass-card mt-6">
+        <div class="card-header-row">
+          <h3>Ryzen CPU Stress Test</h3>
+          <span class="pulse-dot" [class.pulse-stress-active]="stressActive"></span>
+        </div>
+        <div class="stress-content">
+          <p class="panel-desc">
+            Synthetic loading utility to load all CPU cores to 100%. Use this to verify wattage limits and fan cooling performance in real time.
+          </p>
+          <div class="stress-metrics-row mt-4" *ngIf="stressActive">
+            <div class="metric-block">
+              <span class="metric-label">Status</span>
+              <span class="metric-value text-red">STRESSING</span>
+            </div>
+            <div class="metric-block">
+              <span class="metric-label">Elapsed Time</span>
+              <span class="metric-value">{{ stressDuration }}s</span>
+            </div>
+          </div>
+          <button 
+            id="btn-stress-test" 
+            class="btn-primary mt-4 w-full stress-btn" 
+            [class.btn-stress-running]="stressActive" 
+            (click)="toggleStressTest()"
+          >
+            {{ stressActive ? 'Stop Stress Test' : 'Start Stress Test' }}
+          </button>
         </div>
       </div>
     </section>

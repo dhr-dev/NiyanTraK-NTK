@@ -60,4 +60,31 @@ export class RyzenService {
       };
     }
   }
+
+  async startCpuStress(): Promise<boolean> {
+    try {
+      return await invoke<boolean>('start_cpu_stress');
+    } catch (err) {
+      console.error('[RyzenService] Failed to start CPU Stress Test:', err);
+      return false;
+    }
+  }
+
+  async stopCpuStress(): Promise<boolean> {
+    try {
+      return await invoke<boolean>('stop_cpu_stress');
+    } catch (err) {
+      console.error('[RyzenService] Failed to stop CPU Stress Test:', err);
+      return false;
+    }
+  }
+
+  async getStressStatus(): Promise<boolean> {
+    try {
+      return await invoke<boolean>('get_stress_status');
+    } catch (err) {
+      console.error('[RyzenService] Failed to query CPU Stress status:', err);
+      return false;
+    }
+  }
 }
