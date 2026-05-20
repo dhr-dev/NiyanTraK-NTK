@@ -4,6 +4,7 @@ use core::profiles::get_profile;
 use core::executor::apply_profile;
 use crate::core::fan::apply_fan_mode;
 use core::ryzen_adj::{RyzenAdjResponse, set_performance_mode, set_balanced_mode, set_silent_mode, set_custom_limits, get_cpu_status as query_cpu_status};
+use core::stress::{start_cpu_stress, stop_cpu_stress, get_stress_status};
 
 #[tauri::command]
 fn run_profile(profile: String) -> String {
@@ -50,7 +51,10 @@ pub fn run() {
             set_fan_mode,
             set_cpu_mode,
             set_cpu_tdp,
-            get_cpu_status
+            get_cpu_status,
+            start_cpu_stress,
+            stop_cpu_stress,
+            get_stress_status
         ])
         .run(tauri::generate_context!())
     {
