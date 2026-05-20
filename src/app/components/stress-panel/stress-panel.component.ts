@@ -6,135 +6,131 @@ import { CommonModule } from '@angular/common';
   standalone: true,
   imports: [CommonModule],
   template: `
-    <div class="stress-panel flex flex-col w-full h-full select-none gap-4">
-      
-      <!-- Title -->
-      <div class="flex flex-col">
-        <h2 class="text-[13px] font-medium text-[#ccc] uppercase tracking-wider">Synthetic CPU Stress Load</h2>
-        <span class="text-[10px] text-[#555] font-normal mt-[2px]">Verify cooling curves and TDP margins under continuous FPU workloads</span>
+    <div class="page-stress">
+      <div class="page-title-row">
+        <h2 class="section-title">Synthetic CPU Stress</h2>
+        <span class="page-sub">FPU workload on all logical cores</span>
       </div>
-      
-      <!-- Setup Panel -->
-      <div class="bg-card-bg border border-border-muted rounded-[6px] p-4 flex flex-col gap-4">
-        
-        <!-- Duration Segmented Control -->
-        <div class="flex flex-col gap-2">
-          <span class="text-[10px] text-[#aaa] font-medium uppercase tracking-wider">Duration</span>
-          <div class="flex items-center gap-1 w-full bg-[#111] p-[2px] rounded-[4px] border border-border-card">
-            <button
-              *ngFor="let dur of durationPresets"
-              type="button"
-              (click)="selectedDuration = dur.value"
-              [ngClass]="selectedDuration === dur.value ? 'bg-[#1a2a3a] border-[#2a4a6a] text-accent-blue' : 'bg-transparent border-transparent text-[#666]'"
-              class="flex-1 text-[11px] font-medium py-1 border rounded-[3px] text-center transition-all duration-150"
-            >
-              {{ dur.label }}
+
+      <div class="card stress-config-card">
+        <div class="stress-row">
+          <span class="field-label">Duration</span>
+          <div class="seg-control">
+            <button *ngFor="let d of durationPresets" class="seg-btn"
+              [class.seg-btn--active]="stressSelectedDuration === d.value"
+              (click)="selectDuration.emit(d.value)">
+              {{ d.label }}
             </button>
           </div>
         </div>
-        
-        <!-- Intensity Segmented Control -->
-        <div class="flex flex-col gap-2">
-          <span class="text-[10px] text-[#aaa] font-medium uppercase tracking-wider">Workload Intensity</span>
-          <div class="flex items-center gap-1 w-full bg-[#111] p-[2px] rounded-[4px] border border-border-card">
-            <button
-              *ngFor="let intent of intensityPresets"
-              type="button"
-              (click)="selectedIntensity = intent"
-              [ngClass]="selectedIntensity === intent ? 'bg-[#1a2a3a] border-[#2a4a6a] text-accent-blue' : 'bg-transparent border-transparent text-[#666]'"
-              class="flex-1 text-[11px] font-medium py-1 border rounded-[3px] text-center transition-all duration-150"
-            >
-              {{ intent }}
+        <div class="stress-row">
+          <span class="field-label">Intensity</span>
+          <div class="seg-control">
+            <button *ngFor="let i of intensityPresets" class="seg-btn"
+              [class.seg-btn--active]="stressSelectedIntensity === i"
+              (click)="selectIntensity.emit(i)">
+              {{ i }}
             </button>
           </div>
         </div>
-        
-        <!-- Start/Stop Button -->
-        <button
-          type="button"
-          (click)="toggle()"
-          [ngClass]="stressActive ? 'bg-[#2a1a1a] border-[#3a1a1a] text-accent-red hover:bg-[#3b1e1e]' : 'bg-[#1a2a3a] border-[#2a4a6a] text-accent-blue hover:bg-[#1e3040]'"
-          class="flex items-center justify-center w-full h-[34px] border text-[12px] font-medium rounded-[4px] transition-colors duration-150 mt-2"
-        >
+        <button class="apply-btn" [class.apply-btn--stop]="stressActive" (click)="toggleStress.emit()">
           {{ stressActive ? 'Stop Stress Test' : 'Start Stress Test' }}
         </button>
-        
       </div>
-      
-      <!-- Thread Loading Grid Mockup -->
-      <div class="flex-1 bg-card-bg border border-border-muted rounded-[6px] p-4 flex flex-col gap-3 min-h-[140px]">
-        <div class="flex items-center justify-between border-b border-border-muted pb-2">
-          <span class="text-[10px] text-[#aaa] uppercase font-medium tracking-wider">FPU Core Burn Workload Allocator</span>
-          <span 
-            *ngIf="stressActive"
-            class="text-[10px] text-accent-red font-mono font-medium animate-pulse"
-          >
-            ACTIVE BURN ({{ stressDuration }}s)
-          </span>
+
+      <div class="card thread-grid-card">
+        <div class="thread-header">
+          <span class="field-label">Core Burn Allocator</span>
+          <span *ngIf="stressActive" class="thread-badge">● ACTIVE ({{ stressDuration }}s)</span>
         </div>
-        
-        <!-- Thread grid boxes -->
-        <div class="grid grid-cols-4 gap-2 flex-grow overflow-y-auto max-h-[160px] pb-1">
-          <div 
-            *ngFor="let core of [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16]"
-            [ngClass]="stressActive ? 'border-accent-red bg-[#1a0f0f]' : 'border-[#222] bg-[#1a1a1a]'"
-            class="border rounded-[4px] p-2 flex flex-col items-center justify-center gap-1 transition-all duration-300"
-          >
-            <span class="text-[9px] text-[#555] font-semibold">T{{ core }}</span>
-            <span 
-              [ngClass]="stressActive ? 'text-accent-red font-semibold' : 'text-[#444]'"
-              class="text-[10px]"
-            >
-              {{ stressActive ? '100%' : '0%' }}
-            </span>
+        <div class="thread-grid">
+          <div *ngFor="let c of threadCores" class="thread-cell" [class.thread-cell--active]="stressActive">
+            <span class="thread-id">T{{ c }}</span>
+            <span class="thread-pct" [class.thread-pct--on]="stressActive">{{ stressActive ? '100%' : '0%' }}</span>
           </div>
         </div>
       </div>
-      
     </div>
   `,
   styles: [`
-    /* Scrollbar minimal customization */
-    ::-webkit-scrollbar {
-      width: 4px;
+    /* ─── STRESS PAGE ─── */
+    .page-stress { display: flex; flex-direction: column; gap: 14px; }
+    .page-title-row { display: flex; flex-direction: column; gap: 3px; }
+    .page-sub { font-size: 10px; color: #555; }
+    .stress-config-card { gap: 14px; }
+    .stress-row { display: flex; flex-direction: column; gap: 6px; }
+    .field-label { font-size: 10px; font-weight: 500; color: #666; text-transform: uppercase; letter-spacing: 0.06em; }
+    .seg-control { display: flex; gap: 3px; background: #111; border: 1px solid #222; border-radius: 8px; padding: 2px; }
+    .seg-btn {
+      flex: 1; padding: 5px 0;
+      background: transparent; border: 1px solid transparent;
+      border-radius: 6px; color: #555; font-size: 11px; font-weight: 500;
+      text-align: center; transition: background 150ms, color 150ms, border-color 150ms;
     }
-    ::-webkit-scrollbar-track {
-      background: transparent;
+    .seg-btn:hover { color: #999; }
+    .seg-btn--active { background: #1a2a3a; border-color: #2a4a6a; color: #3b82f6; }
+
+    /* ─── CARD ─── */
+    .card {
+      background: #171717;
+      border: 1px solid #242424;
+      border-radius: 14px;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
     }
-    ::-webkit-scrollbar-thumb {
-      background: #2a2a2a;
-      border-radius: 2px;
+    .section-title { font-size: 13px; font-weight: 500; color: #bbb; }
+
+    /* ─── APPLY BUTTON ─── */
+    .apply-btn {
+      width: 100%; height: 34px;
+      background: #1a2a3a; border: 1px solid #2a4a6a;
+      border-radius: 8px; color: #3b82f6;
+      font-size: 12px; font-weight: 500;
+      transition: background 150ms;
+      display: flex; align-items: center; justify-content: center;
+      margin-top: auto;
     }
+    .apply-btn:hover:not(:disabled) { background: #1e3040; }
+    .apply-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+    .apply-btn--stop { background: #2a1a1a; border-color: #3a1a1a; color: #ef4444; }
+    .apply-btn--stop:hover:not(:disabled) { background: #3b1e1e; }
+
+    /* Thread grid card */
+    .thread-grid-card { gap: 10px; }
+    .thread-header { display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid #222; padding-bottom: 8px; }
+    .thread-badge { font-size: 10px; color: #ef4444; font-weight: 500; }
+    .thread-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+    .thread-cell {
+      background: #1a1a1a; border: 1px solid #222; border-radius: 8px;
+      padding: 8px; display: flex; flex-direction: column; align-items: center; gap: 3px;
+      transition: background 300ms, border-color 300ms;
+    }
+    .thread-cell--active { background: #1a0f0f; border-color: #3a1a1a; }
+    .thread-id { font-size: 9px; color: #444; font-weight: 600; }
+    .thread-pct { font-size: 10px; color: #444; }
+    .thread-pct--on { color: #ef4444; font-weight: 600; }
   `]
 })
 export class StressPanelComponent {
   @Input() stressActive: boolean = false;
   @Input() stressDuration: number = 0;
-  
-  @Output() onStartTest = new EventEmitter<{duration: number, intensity: string}>();
-  @Output() onStopTest = new EventEmitter<void>();
+  @Input() stressTotal: number = 60;
+  @Input() stressSelectedDuration: number = 60;
+  @Input() stressSelectedIntensity: string = 'Heavy';
 
-  selectedDuration: number = 60; // default 1 min (in seconds)
-  selectedIntensity: string = 'Heavy';
+  @Output() selectDuration = new EventEmitter<number>();
+  @Output() selectIntensity = new EventEmitter<string>();
+  @Output() toggleStress = new EventEmitter<void>();
 
-  durationPresets = [
-    { label: '30s', value: 30 },
-    { label: '1 min', value: 60 },
-    { label: '5 min', value: 300 },
-    { label: '10 min', value: 600 },
+  readonly durationPresets = [
+    { label: '30s',    value: 30   },
+    { label: '1 min',  value: 60   },
+    { label: '5 min',  value: 300  },
+    { label: '10 min', value: 600  },
     { label: '30 min', value: 1800 }
   ];
-
-  intensityPresets = ['Light', 'Medium', 'Heavy', 'Maximum'];
-
-  toggle() {
-    if (this.stressActive) {
-      this.onStopTest.emit();
-    } else {
-      this.onStartTest.emit({
-        duration: this.selectedDuration,
-        intensity: this.selectedIntensity
-      });
-    }
-  }
+  readonly intensityPresets = ['Light', 'Medium', 'Heavy', 'Maximum'];
+  readonly threadCores = [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16];
 }

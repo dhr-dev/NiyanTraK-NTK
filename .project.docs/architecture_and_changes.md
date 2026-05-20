@@ -85,8 +85,29 @@ Profiles are predefined system configurations designed for specific power and ac
 - **PostCSS integration**: Configured through `postcss.config.json` (and `postcss.config.js`) in the project root utilizing the new `@tailwindcss/postcss` builder plugin package for v4.
 - **Global Stylesheet**: `@import url(...)` for Google Fonts comes first, then `@import "tailwindcss"` — order is required by CSS spec.
 
-## 5. UI Architecture — Single Standalone Component
-All UI logic, template, and scoped CSS have been consolidated into `src/app/app.component.ts` as a single Angular standalone component using `template: \`...\`` and `styles: [\`...\`]` inline. The separate `.html` and child component `.ts` files are no longer loaded at runtime (the decorator uses `template:` not `templateUrl:`).
+## 5. UI Architecture — Standalone Component Decomposition
+
+The user interface has been decomposed from a single monolithic file into a decoupled, modular hierarchy consisting of **10 standalone Angular components** nested under `src/app/components/`. 
+
+The parent `AppComponent` remains the central state orchestrator, managing background polling loops, RyzenService integrations, and Tauri IPC command dispatches. Data is passed down to child elements via `@Input()`, and user interactions are piped back up to the orchestrator via `@Output() / EventEmitter` bindings.
+
+### Component Architecture Map
+
+*   **NavRailComponent (`app-nav-rail`)**: Left-anchored sidebar navigation rail containing the brand pill and buttons for Quick Control and Stress Test pages.
+*   **TopBarComponent (`app-top-bar`)**: Upper-anchored header displaying the HP Victus subtext and dynamic CPU state status pill.
+*   **StressBannerComponent (`app-stress-banner`)**: Floating overlay displaying progress bar and remaining duration capsule while stress workloads are running.
+*   **MonitorStripComponent (`app-monitor-strip`)**: Real-time telemetry cards (FAST PPT, SLOW PPT, TEMP, STAPM) displaying peak values and hosting the floating peak reset action button.
+*   **ProfilesDrawerComponent (`app-profiles-drawer`)**: Horizontal tray hosting preset performance configuration cards (Battery Saver, Bed Mode, Table Mode, Performance, Extreme, + Custom).
+*   **BezelStripsComponent (`app-bezel-strips`)**: Floating bezel tab ribbons nested on the right edge of the screen, allowing users to fold/unfold the Profiles drawer and trigger stress workloads on any view.
+*   **FanControlComponent (`app-fan-control`)**: Cooling sub-system card hosting the manual fan speed override toggle, linear level slider, dynamic RPM readout, and Apply controls.
+*   **CPUPowerPanelComponent (`app-cpu-power-panel`)**: Power limit card hosting active preset mode badge, exact watt custom TDP slider, and Apply controls.
+*   **StressPanelComponent (`app-stress-panel`)**: FPU workload configuration view hosting segmented presets for duration and intensity, along with a 16-thread Core Burn simulator grid.
+*   **FooterStripComponent (`app-footer-strip`)**: Bottom-anchored credit and version notice.
+
+### Scoped Style Encapsulation & Host Layouts
+1. **Style Isolation**: All CSS rules are encapsulated locally within each child component's `@Component.styles` attribute block using pure, vanilla CSS to maintain 100% design fidelity.
+2. **Width Split (50/50 Layout)**: Custom elements `app-fan-control` and `app-cpu-power-panel` are styled with host flex rules (`flex: 1; display: flex; flex-direction: column;`) to preserve perfect visual column sizing.
+3. **Margins & Bezel Peeking**: Layout paddings and absolute overlay coordinate maps leverage the standard `59px` right margin to maintain symmetrical alignment alongside the right edge bezel tabs.
 
 ### Visual Design Tokens (enforced)
 | Token            | Value     | Usage                          |

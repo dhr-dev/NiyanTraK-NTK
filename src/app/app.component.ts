@@ -4,287 +4,121 @@ import { FormsModule } from '@angular/forms';
 import { invoke } from '@tauri-apps/api/core';
 import { RyzenService } from './ryzen.service';
 
+// Modular Component Imports
+import { NavRailComponent } from './components/nav-rail/nav-rail.component';
+import { TopBarComponent } from './components/top-bar/top-bar.component';
+import { StressBannerComponent } from './components/stress-banner/stress-banner.component';
+import { MonitorStripComponent } from './components/monitor-strip/monitor-strip.component';
+import { ProfilesDrawerComponent } from './components/profiles-drawer/profiles-drawer.component';
+import { BezelStripsComponent } from './components/bezel-strips/bezel-strips.component';
+import { FanControlComponent } from './components/fan-control/fan-control.component';
+import { CPUPowerPanelComponent } from './components/cpu-power-panel/cpu-power-panel.component';
+import { StressPanelComponent } from './components/stress-panel/stress-panel.component';
+import { FooterStripComponent } from './components/footer-strip/footer-strip.component';
+
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [
+    CommonModule,
+    FormsModule,
+    NavRailComponent,
+    TopBarComponent,
+    StressBannerComponent,
+    MonitorStripComponent,
+    ProfilesDrawerComponent,
+    BezelStripsComponent,
+    FanControlComponent,
+    CPUPowerPanelComponent,
+    StressPanelComponent,
+    FooterStripComponent
+  ],
   template: `
     <div class="app-shell">
 
-      <!-- ══ LEFT: FULL-HEIGHT NAV RAIL (anchored to window, not content) ══ -->
-      <nav class="nav-rail">
-        <div class="brand-pill">
-          <span class="brand-dot"></span>
-        </div>
-        <button class="nav-btn nav-btn--active" title="Quick Control">
-          <svg viewBox="0 0 24 24" fill="currentColor" width="20" height="20">
-            <path fill-rule="evenodd" d="M14.615 1.595a.75.75 0 0 1 .359.852L12.982 9.75h7.268a.75.75 0 0 1 .548 1.262l-10.5 11.25a.75.75 0 0 1-1.272-.71l1.992-7.302H3.75a.75.75 0 0 1-.548-1.262l10.5-11.25a.75.75 0 0 1 .913-.143Z" clip-rule="evenodd"/>
-          </svg>
-          <span class="nav-label">Quick</span>
-        </button>
-      </nav>
+      <!-- LEFT: FULL-HEIGHT NAV RAIL -->
+      <app-nav-rail [activePage]="activePage" (pageChange)="activePage = $event"></app-nav-rail>
 
-      <!-- ══ RIGHT: ALL CONTENT STACKED VERTICALLY ══ -->
+      <!-- RIGHT: ALL CONTENT STACKED VERTICALLY -->
       <div class="content-col">
 
         <!-- TOP BAR -->
-        <header class="topbar">
-          <div class="brand">
-            <span class="brand-name">VictusDeck</span>
-            <span class="brand-sep">·</span>
-            <span class="brand-sub">HP Victus Tuning Suite</span>
-          </div>
-          <div class="status-pill">{{ statusPillText }}</div>
-        </header>
+        <app-top-bar [statusText]="statusPillText"></app-top-bar>
 
         <!-- STRESS BANNER -->
-        <div class="stress-banner" [class.stress-banner--active]="stressActive">
-          <svg viewBox="0 0 24 24" fill="#ef4444" width="13" height="13" style="flex-shrink:0">
-            <path d="M12.963 2.285a.75.75 0 0 0-1.071-.105 9.715 9.715 0 0 1-3.662 1.777C7.03 4.3 6 5.376 6 6.75c0 1.258.625 2.186 1.488 2.76.818.544 1.83.746 2.512.746a.75.75 0 0 0 .736-.834 5.25 5.25 0 0 1 .425-3.32.75.75 0 0 1 1.157-.117 9.716 9.716 0 0 1 2.424 5.12 3.75 3.75 0 0 0 2.222-2.12.75.75 0 0 0-.613-.984 6.75 6.75 0 0 1-3.42-8.794ZM4.002 18.003A8.966 8.966 0 0 0 12 22.002a8.966 8.966 0 0 0 7.998-3.999A9.957 9.957 0 0 1 12 16.002a9.956 9.956 0 0 1-7.998 2.001Z"/>
-          </svg>
-          <div class="stress-bar-track">
-            <div class="stress-bar-fill" [style.width]="stressPercent + '%'"></div>
-          </div>
-          <span class="stress-timer">{{ stressRemaining }}</span>
-          <button class="stress-stop-btn" (click)="toggleStressTest()">Stop</button>
-        </div>
+        <app-stress-banner
+          [active]="stressActive"
+          [percent]="stressPercent"
+          [remaining]="stressRemaining"
+          (stop)="toggleStressTest()"
+        ></app-stress-banner>
 
         <!-- MONITOR STRIP -->
-        <div class="monitor-strip">
-          <!-- FAST PPT -->
-          <div class="monitor-seg">
-            <div class="monitor-row">
-              <span class="monitor-label">FAST PPT</span>
-              <span class="monitor-peak"
-                *ngIf="peakFastPpt > 0"
-                [style.color]="metricColor(peakFastPpt, monitorMetrics.fastPptLimit)"
-              >↑ {{ peakFastPpt }}W</span>
-            </div>
-            <div class="monitor-value">{{ monitorMetrics.fastPpt }}W</div>
-            <div class="monitor-bar-track">
-              <div class="monitor-bar-fill"
-                [style.width]="metricPct(monitorMetrics.fastPpt, monitorMetrics.fastPptLimit) + '%'"
-                [style.background]="metricColor(monitorMetrics.fastPpt, monitorMetrics.fastPptLimit)">
-              </div>
-            </div>
-          </div>
-          <div class="monitor-divider"></div>
-          <!-- SLOW PPT -->
-          <div class="monitor-seg">
-            <div class="monitor-row">
-              <span class="monitor-label">SLOW PPT</span>
-              <span class="monitor-peak"
-                *ngIf="peakSlowPpt > 0"
-                [style.color]="metricColor(peakSlowPpt, monitorMetrics.slowPptLimit)"
-              >↑ {{ peakSlowPpt }}W</span>
-            </div>
-            <div class="monitor-value">{{ monitorMetrics.slowPpt }}W</div>
-            <div class="monitor-bar-track">
-              <div class="monitor-bar-fill"
-                [style.width]="metricPct(monitorMetrics.slowPpt, monitorMetrics.slowPptLimit) + '%'"
-                [style.background]="metricColor(monitorMetrics.slowPpt, monitorMetrics.slowPptLimit)">
-              </div>
-            </div>
-          </div>
-          <div class="monitor-divider"></div>
-          <!-- TEMP -->
-          <div class="monitor-seg">
-            <div class="monitor-row">
-              <span class="monitor-label">TEMP</span>
-              <span class="monitor-peak"
-                *ngIf="peakTemp > 0"
-                [style.color]="metricColor(peakTemp, monitorMetrics.tempLimit)"
-              >↑ {{ peakTemp }}°C</span>
-            </div>
-            <div class="monitor-value">{{ monitorMetrics.temp }}°C</div>
-            <div class="monitor-bar-track">
-              <div class="monitor-bar-fill"
-                [style.width]="metricPct(monitorMetrics.temp, monitorMetrics.tempLimit) + '%'"
-                [style.background]="metricColor(monitorMetrics.temp, monitorMetrics.tempLimit)">
-              </div>
-            </div>
-          </div>
-          <div class="monitor-divider"></div>
-          <!-- STAPM -->
-          <div class="monitor-seg">
-            <div class="monitor-row">
-              <span class="monitor-label">STAPM</span>
-              <span class="monitor-bios">(BIOS)</span>
-            </div>
-            <div class="monitor-value">{{ monitorMetrics.stapm }}W</div>
-            <div class="monitor-bios-sub">BIOS-ctrl</div>
-          </div>
-          <!-- RESET PEAKS -->
-          <button class="peak-reset-btn" (click)="resetPeaks()" title="Reset peak values">↺</button>
-        </div>
+        <app-monitor-strip
+          [metrics]="monitorMetrics"
+          [peakFast]="peakFastPpt"
+          [peakSlow]="peakSlowPpt"
+          [peakTemp]="peakTemp"
+          (reset)="resetPeaks()"
+        ></app-monitor-strip>
 
-        <!-- PROFILES DRAWER (bezel ribbon handles open/close — no close button to avoid collision) -->
-        <div class="profiles-drawer" [class.profiles-drawer--open]="profilesOpen">
-          <div class="drawer-header">
-            <span class="drawer-title">PROFILES</span>
-          </div>
-          <div class="drawer-cards">
-            <div *ngFor="let p of profiles"
-              class="drawer-card"
-              [class.drawer-card--active]="profileName === p.name"
-              (click)="onSelectProfile(p.name)"
-            >
-              <div class="drawer-card-name">{{ p.label }}</div>
-              <div class="drawer-card-spec">{{ p.powerLimit }}W · {{ p.fanLabel }}</div>
-            </div>
-            <div class="drawer-card"
-              [class.drawer-card--active]="profileName === 'custom'"
-              (click)="onSelectProfile('custom')"
-            >
-              <div class="drawer-card-name">+ Custom</div>
-              <div class="drawer-card-spec">Manual</div>
-            </div>
-          </div>
-        </div>
+        <!-- PROFILES DRAWER -->
+        <app-profiles-drawer
+          [open]="profilesOpen"
+          [currentProfile]="profileName"
+          [profiles]="profiles"
+          (selectProfile)="onSelectProfile($event)"
+        ></app-profiles-drawer>
 
         <!-- BEZEL RIBBONS: Profiles + Stress on right edge -->
-        <div class="bezel-wrap">
-          <!-- Profiles ribbon: always visible, toggles the drawer -->
-          <div class="ribbon"
-            [class.ribbon--open]="profilesOpen"
-            (click)="profilesOpen = !profilesOpen"
-            title="Performance Profiles"
-          >
-            <svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16">
-              <path fill-rule="evenodd" d="M7.5 6a4.5 4.5 0 1 1 9 0 4.5 4.5 0 0 1-9 0ZM3.751 20.105a8.25 8.25 0 0 1 16.498 0 .75.75 0 0 1-.437.695A18.683 18.683 0 0 1 12 22.5c-2.786 0-5.433-.608-7.812-1.7a.75.75 0 0 1-.437-.695Z" clip-rule="evenodd"/>
-            </svg>
-            <span class="ribbon-text">{{ profilesOpen ? '✕ CLOSE' : 'PROFILES' }}</span>
-          </div>
-          <!-- Stress ribbon: always visible, toggles stress test -->
-          <div class="ribbon ribbon--stress"
-            [class.ribbon--stress-on]="stressActive"
-            (click)="toggleStressTest()"
-            title="{{ stressActive ? 'Stop Stress Test' : 'Start Stress Test' }}"
-          >
-            <svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16">
-              <path fill-rule="evenodd" d="M12.963 2.285a.75.75 0 0 0-1.071-.105 9.715 9.715 0 0 1-3.662 1.777C7.03 4.3 6 5.376 6 6.75c0 1.258.625 2.186 1.488 2.76.818.544 1.83.746 2.512.746a.75.75 0 0 0 .736-.834 5.25 5.25 0 0 1 .425-3.32.75.75 0 0 1 1.157-.117 9.716 9.716 0 0 1 2.424 5.12 3.75 3.75 0 0 0 2.222-2.12.75.75 0 0 0-.613-.984 6.75 6.75 0 0 1-3.42-8.794ZM4.002 18.003A8.966 8.966 0 0 0 12 22.002a8.966 8.966 0 0 0 7.998-3.999A9.957 9.957 0 0 1 12 16.002a9.956 9.956 0 0 1-7.998 2.001Z" clip-rule="evenodd"/>
-            </svg>
-            <span class="ribbon-text">{{ stressActive ? '■ STOP' : 'STRESS' }}</span>
-          </div>
-        </div>
+        <app-bezel-strips
+          [profilesOpen]="profilesOpen"
+          [stressActive]="stressActive"
+          (toggleProfiles)="profilesOpen = !profilesOpen"
+          (toggleStress)="toggleStressTest()"
+        ></app-bezel-strips>
 
         <!-- VIEWPORT: SCROLLABLE PAGES -->
         <main class="viewport">
 
-          <!-- ── QUICK CONTROL PAGE ── -->
+          <!-- QUICK CONTROL PAGE -->
           <div *ngIf="activePage === 'quick'" class="page-quick">
+            <!-- FAN CONTROL CARD -->
+            <app-fan-control
+              [enabled]="fanEnabled"
+              [level]="fanLevel"
+              (toggle)="toggleFanControl()"
+              (levelChange)="fanLevel = $event"
+              (apply)="applyFan()"
+            ></app-fan-control>
 
-            <!-- FAN CONTROL CARD (compact) -->
-            <section class="card fan-card">
-              <div class="card-header">
-                <h2 class="section-title">Fan Control</h2>
-                <button class="pill-toggle" [class.pill-toggle--on]="fanEnabled"
-                  (click)="toggleFanControl()" role="switch" [attr.aria-checked]="fanEnabled">
-                  <span class="pill-thumb"></span>
-                </button>
-              </div>
-
-              <div class="slider-block" [class.slider-block--disabled]="!fanEnabled">
-                <div class="slider-labels">
-                  <span class="slider-edge">Silent</span>
-                  <span class="slider-edge">Max</span>
-                </div>
-                <input type="range" class="range-slider" id="fan-slider"
-                  min="8" max="39" step="1"
-                  [(ngModel)]="fanLevel"
-                  [disabled]="!fanEnabled"
-                  [ngStyle]="{'--fill-pct': fanSliderFill}"/>
-                <div class="fan-readout">
-                  <span class="readout-big">{{ fanEnabled ? getRpm(fanLevel) + ' RPM' : 'Auto' }}</span>
-                  <span class="readout-sub">{{ fanEnabled ? (getPercent(fanLevel) + '% · L' + fanLevel) : 'Thermal policy' }}</span>
-                </div>
-              </div>
-
-              <button class="apply-btn" [disabled]="!fanEnabled" (click)="applyFan()">Apply Fan</button>
-            </section>
-
-          <!-- RIGHT: TDP + STRESS SHORTCUT stacked -->
+            <!-- RIGHT COLUMN: CPU Power limit stacked -->
             <aside class="right-col">
-
-              <!-- CPU Power Limit -->
-              <div class="card">
-                <h2 class="section-title">CPU Power Limit</h2>
-                <div class="tdp-section">
-                  <div class="tdp-display-row">
-                    <div class="tdp-mode-stack">
-                      <span class="tdp-mode-badge">{{ cpuMode === 'bed' ? 'BED' : cpuMode.toUpperCase() }}</span>
-                      <span class="tdp-mode-sub">Active Mode</span>
-                    </div>
-                    <span class="tdp-value">{{ cpuTdp }}W</span>
-                  </div>
-                  <input type="range" class="range-slider" id="tdp-slider"
-                    min="8" max="55" step="1"
-                    [(ngModel)]="cpuTdp"
-                    [ngStyle]="{'--fill-pct': tdpSliderFill}"/>
-                  <div class="tdp-range-labels">
-                    <span>8W</span><span>55W</span>
-                  </div>
-                </div>
-                <button class="apply-btn" (click)="applyCustomTdp()">Apply TDP</button>
-              </div>
-
+              <app-cpu-power-panel
+                [mode]="cpuMode"
+                [tdp]="cpuTdp"
+                (tdpChange)="cpuTdp = $event"
+                (apply)="applyCustomTdp()"
+              ></app-cpu-power-panel>
             </aside>
-
           </div>
 
-          <!-- ── STRESS TEST DETAIL PAGE (nav rail shortcut) ── -->
-          <div *ngIf="activePage === 'stress'" class="page-stress">
-            <div class="page-title-row">
-              <h2 class="section-title">Synthetic CPU Stress</h2>
-              <span class="page-sub">FPU workload on all logical cores</span>
-            </div>
-
-            <div class="card stress-config-card">
-              <div class="stress-row">
-                <span class="field-label">Duration</span>
-                <div class="seg-control">
-                  <button *ngFor="let d of durationPresets" class="seg-btn"
-                    [class.seg-btn--active]="stressSelectedDuration === d.value"
-                    (click)="stressSelectedDuration = d.value; stressTotal = d.value">
-                    {{ d.label }}
-                  </button>
-                </div>
-              </div>
-              <div class="stress-row">
-                <span class="field-label">Intensity</span>
-                <div class="seg-control">
-                  <button *ngFor="let i of intensityPresets" class="seg-btn"
-                    [class.seg-btn--active]="stressSelectedIntensity === i"
-                    (click)="stressSelectedIntensity = i">
-                    {{ i }}
-                  </button>
-                </div>
-              </div>
-              <button class="apply-btn" [class.apply-btn--stop]="stressActive" (click)="toggleStressTest()">
-                {{ stressActive ? 'Stop Stress Test' : 'Start Stress Test' }}
-              </button>
-            </div>
-
-            <div class="card thread-grid-card">
-              <div class="thread-header">
-                <span class="field-label">Core Burn Allocator</span>
-                <span *ngIf="stressActive" class="thread-badge">● ACTIVE ({{ stressDuration }}s)</span>
-              </div>
-              <div class="thread-grid">
-                <div *ngFor="let c of threadCores" class="thread-cell" [class.thread-cell--active]="stressActive">
-                  <span class="thread-id">T{{ c }}</span>
-                  <span class="thread-pct" [class.thread-pct--on]="stressActive">{{ stressActive ? '100%' : '0%' }}</span>
-                </div>
-              </div>
-            </div>
-          </div>
+          <!-- STRESS TEST DETAIL PAGE -->
+          <app-stress-panel *ngIf="activePage === 'stress'"
+            [stressActive]="stressActive"
+            [stressDuration]="stressDuration"
+            [stressTotal]="stressTotal"
+            [stressSelectedDuration]="stressSelectedDuration"
+            [stressSelectedIntensity]="stressSelectedIntensity"
+            (selectDuration)="stressSelectedDuration = $event; stressTotal = $event"
+            (selectIntensity)="stressSelectedIntensity = $event"
+            (toggleStress)="toggleStressTest()"
+          ></app-stress-panel>
 
         </main>
 
         <!-- FOOTER -->
-        <footer class="footer-strip">
-          v0.1 &nbsp;·&nbsp; Made with passion by DhruvilGajjar
-        </footer>
+        <app-footer-strip></app-footer-strip>
 
       </div><!-- /content-col -->
 
@@ -319,54 +153,6 @@ import { RyzenService } from './ryzen.service';
       font-size: 13px;
     }
 
-    /* ─── NAV RAIL: fixed full height on left ─── */
-    .nav-rail {
-      width: 56px;
-      min-width: 56px;
-      height: 100vh;
-      background: #0d0d0d;
-      border-right: 1px solid #222;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      padding: 12px 0;
-      gap: 4px;
-      flex-shrink: 0;
-      z-index: 10;
-    }
-    .brand-pill {
-      width: 32px;
-      height: 32px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      margin-bottom: 8px;
-    }
-    .brand-dot {
-      width: 8px;
-      height: 8px;
-      border-radius: 50%;
-      background: #3b82f6;
-    }
-    .nav-btn {
-      width: 40px;
-      height: 44px;
-      border-radius: 10px;
-      border: none;
-      background: transparent;
-      color: #444;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      gap: 3px;
-      transition: background 150ms ease, color 150ms ease;
-    }
-    .nav-btn:hover { background: #161616; color: #aaa; }
-    .nav-btn--active { background: #1a2a3a; color: #3b82f6; }
-    .nav-btn--active:hover { background: #1e3040; }
-    .nav-label { font-size: 9px; font-weight: 500; letter-spacing: 0.04em; text-transform: uppercase; }
-
     /* ─── CONTENT COLUMN: topbar + strips + viewport + footer ─── */
     .content-col {
       display: flex;
@@ -376,245 +162,8 @@ import { RyzenService } from './ryzen.service';
       overflow: hidden;
       position: relative;
     }
- 
-    /* ─── TOPBAR ─── */
-    .topbar {
-      height: 44px;
-      min-height: 44px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 0 16px;
-      background: #0d0d0d;
-      border-bottom: none;
-      flex-shrink: 0;
-      user-select: none;
-    }
-    .brand { display: flex; align-items: center; gap: 8px; }
-    .brand-name { font-size: 13px; font-weight: 600; color: #e0e0e0; }
-    .brand-sep { color: #333; font-size: 12px; }
-    .brand-sub { font-size: 10px; color: #444; }
-    .status-pill {
-      padding: 4px 12px;
-      border-radius: 8px;
-      background: #1e1e1e;
-      border: 1px solid #2a2a2a;
-      font-size: 11px;
-      color: #888;
-    }
- 
-    /* ─── STRESS BANNER ─── */
-    .stress-banner {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      padding: 0 110px 0 16px;
-      background: #171717;
-      border: 1px solid #242424;
-      border-radius: 10px;
-      margin: 0 59px 0 16px;
-      flex-shrink: 0;
-      height: 0;
-      overflow: hidden;
-      opacity: 0;
-      transition: height 280ms cubic-bezier(0.4,0,0.2,1), opacity 200ms ease, margin 280ms cubic-bezier(0.4,0,0.2,1);
-    }
-    .stress-banner--active { height: 38px; opacity: 1; margin: 8px 59px 8px 16px; }
-    .stress-bar-track { flex: 1; height: 4px; background: #1e1e1e; border-radius: 9999px; overflow: hidden; }
-    .stress-bar-fill { height: 100%; background: #3b82f6; border-radius: 9999px; transition: width 1s linear; }
-    .stress-timer { font-size: 10px; color: #666; font-variant-numeric: tabular-nums; }
-    .stress-stop-btn {
-      padding: 3px 10px; background: #2a1a1a; border: 1px solid #3a1a1a;
-      border-radius: 6px; color: #ef4444; font-size: 10px;
-      transition: background 150ms;
-    }
-    .stress-stop-btn:hover { background: #3b1e1e; }
- 
-    /* ─── MONITOR STRIP ─── */
-    .monitor-strip {
-      display: flex;
-      align-items: stretch;
-      height: auto;
-      min-height: auto;
-      background: transparent;
-      padding: 8px 59px 8px 16px;
-      gap: 12px;
-      flex-shrink: 0;
-      user-select: none;
-      position: relative;
-    }
-    .monitor-seg {
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
-      padding: 10px 18px;
-      flex: 1;
-      gap: 3px;
-      background: #171717;
-      border: 1px solid #242424;
-      border-radius: 12px;
-    }
-    .monitor-seg:not(:last-child) { border-right: none; }
-    .monitor-row { display: flex; align-items: center; justify-content: space-between; }
-    .monitor-label { font-size: 10px; font-weight: 500; color: #555; text-transform: uppercase; letter-spacing: 0.06em; }
-    /* peak: 11px, bold, colour applied via [style.color] from metricColor() */
-    .monitor-peak { font-size: 11px; font-weight: 600; font-variant-numeric: tabular-nums; }
-    .monitor-value { font-size: 16px; font-weight: 500; color: #e0e0e0; line-height: 1; }
-    .monitor-bar-track { width: 80px; height: 4px; background: #2a2a2a; border-radius: 9999px; overflow: hidden; }
-    .monitor-bar-fill { height: 100%; border-radius: 9999px; transition: width 600ms ease, background 300ms ease; }
-    .monitor-bios { font-size: 9px; color: #3a3a3a; }
-    .monitor-bios-sub { font-size: 9px; color: #383838; font-style: italic; }
-    .monitor-divider { display: none; }
-    .peak-reset-btn {
-      position: absolute;
-      right: 70px;
-      top: 50%;
-      transform: translateY(-50%);
-      background: #171717;
-      border: 1px solid #242424;
-      color: #777;
-      font-size: 15px;
-      width: 28px;
-      height: 28px;
-      border-radius: 50%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      transition: color 150ms, background 150ms, border-color 150ms;
-    }
-    .peak-reset-btn:hover { color: #3b82f6; background: #1e1e1e; border-color: #333; }
- 
-    /* ─── PROFILES DRAWER ─── */
-    .profiles-drawer {
-      background: #171717;
-      border: 1px solid #242424;
-      border-radius: 14px;
-      margin: 0 59px 0 16px;
-      flex-shrink: 0;
-      max-height: 0;
-      overflow: hidden;
-      opacity: 0;
-      transition: max-height 300ms cubic-bezier(0.4,0,0.2,1), opacity 200ms ease, margin 300ms cubic-bezier(0.4,0,0.2,1), padding 200ms ease;
-    }
-    .profiles-drawer--open {
-      max-height: 130px;
-      opacity: 1;
-      margin: 8px 59px 8px 16px;
-      padding: 4px 0;
-      box-shadow: 0 8px 24px rgba(0,0,0,0.4);
-    }
-    .drawer-header {
-      display: flex;
-      align-items: center;
-      padding: 12px 16px 8px;
-    }
-    .drawer-title { font-size: 10px; font-weight: 600; color: #555; text-transform: uppercase; letter-spacing: 0.1em; }
-    .drawer-cards {
-      display: flex;
-      gap: 8px;
-      padding: 0 16px 12px;
-      overflow-x: auto;
-    }
-    .drawer-cards::-webkit-scrollbar { display: none; }
-    .drawer-card {
-      flex-shrink: 0;
-      width: 130px;
-      background: #171717;
-      border: 1px solid #242424;
-      border-radius: 10px;
-      padding: 10px 12px;
-      cursor: pointer;
-      transition: background 150ms, border-color 150ms;
-    }
-    .drawer-card:hover { background: #1e1e1e; border-color: #333; }
-    .drawer-card--active {
-      background: #141e2a;
-      border-left: 2px solid #3b82f6;
-      border-top-color: #1a3a5a;
-      border-right-color: #1a3a5a;
-      border-bottom-color: #1a3a5a;
-      border-radius: 0 10px 10px 0;
-    }
-    /* Profile name: larger and clearly readable */
-    .drawer-card-name { font-size: 13px; font-weight: 600; color: #ddd; }
-    .drawer-card-spec { font-size: 10px; color: #555; text-transform: uppercase; margin-top: 3px; letter-spacing: 0.04em; }
 
-    /* ─── BEZEL RIBBONS ─── */
-    .bezel-wrap {
-      position: absolute;
-      right: 0;
-      top: 44px;
-      z-index: 40;
-      pointer-events: none;
-      display: flex;
-      flex-direction: column;
-      gap: 6px;
-    }
-    /* Shared ribbon base */
-    .ribbon {
-      width: 84px;
-      height: 52px;
-      background: #111827;
-      border: 1px solid #1e3a5f;
-      border-right: none;
-      border-left: 3px solid #2563eb;
-      border-radius: 12px 0 0 12px;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      gap: 4px;
-      cursor: pointer;
-      pointer-events: auto;
-      color: #4d90d6;
-      transition: transform 200ms ease, background 150ms, border-color 150ms, color 150ms;
-      user-select: none;
-    }
-    .ribbon:hover {
-      transform: translateX(-5px);
-      background: #152035;
-      border-color: #3b82f6;
-      border-left-color: #3b82f6;
-      color: #7ab8f5;
-    }
-    /* Profiles: open/active state */
-    .ribbon--open {
-      background: #1a2e4a;
-      border-color: #3b82f6;
-      border-left-color: #3b82f6;
-      color: #93c5fd;
-      transform: translateX(-5px);
-    }
-    .ribbon--open:hover { background: #1e3550; color: #bfdbfe; }
-    /* Stress ribbon: same shape, red accent */
-    .ribbon--stress {
-      border-color: #3a1220;
-      border-left-color: #7f1d1d;
-      color: #b45555;
-    }
-    .ribbon--stress:hover {
-      background: #1a0a0a;
-      border-color: #ef4444;
-      border-left-color: #ef4444;
-      color: #fca5a5;
-      transform: translateX(-5px);
-    }
-    /* Stress active: pulsing red glow */
-    .ribbon--stress-on {
-      background: #1a0a0a;
-      border-color: #ef4444;
-      border-left-color: #ef4444;
-      color: #fca5a5;
-      transform: translateX(-5px);
-      animation: stress-glow 1.6s infinite alternate;
-    }
-    @keyframes stress-glow {
-      from { box-shadow: -3px 0 6px rgba(239,68,68,0.25); }
-      to   { box-shadow: -3px 0 14px rgba(239,68,68,0.6); }
-    }
-    .ribbon-text { font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; }
-
-    /* ─── VIEWPORT: padding-right = 70% of bezel (84px) = ~59px so 30% of bezel peeks as chrome ─── */
+    /* ─── VIEWPORT ─── */
     .viewport {
       flex: 1;
       min-height: 0;
@@ -626,196 +175,12 @@ import { RyzenService } from './ryzen.service';
     .viewport::-webkit-scrollbar-thumb { background: #2a2a2a; border-radius: 9999px; }
 
     /* ─── QUICK PAGE LAYOUT ─── */
-    /* align-items:stretch so both cards grow to the same height */
     .page-quick { display: flex; gap: 16px; align-items: stretch; }
+    app-fan-control { flex: 1; display: flex; flex-direction: column; }
 
-    /* ─── SHARED CARD ─── */
-    .card {
-      background: #171717;
-      border: 1px solid #242424;
-      border-radius: 14px;
-      padding: 16px;
-      display: flex;
-      flex-direction: column;
-      gap: 12px;
-    }
-    .card-header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-    }
-    .section-title { font-size: 13px; font-weight: 500; color: #bbb; }
-
-    /* ─── FAN CARD: same flex share as right-col ─── */
-    .fan-card { flex: 1; }
-
-    /* ─── PILL TOGGLE ─── */
-    .pill-toggle {
-      position: relative;
-      width: 28px; height: 14px;
-      border-radius: 9999px;
-      background: #2a2a2a;
-      border: none;
-      transition: background 150ms ease;
-      padding: 0;
-      flex-shrink: 0;
-    }
-    .pill-toggle--on { background: #3b82f6; }
-    .pill-thumb {
-      position: absolute;
-      top: 2px; left: 2px;
-      width: 10px; height: 10px;
-      border-radius: 50%;
-      background: #fff;
-      transition: transform 150ms ease;
-      pointer-events: none;
-    }
-    .pill-toggle--on .pill-thumb { transform: translateX(14px); }
-
-    /* ─── SLIDER ─── */
-    .slider-block { display: flex; flex-direction: column; gap: 6px; }
-    .slider-block--disabled { opacity: 0.35; pointer-events: none; }
-    .slider-labels { display: flex; justify-content: space-between; }
-    .slider-edge { font-size: 10px; color: #444; }
-
-    .range-slider {
-      -webkit-appearance: none;
-      appearance: none;
-      width: 100%;
-      height: 3px;
-      border-radius: 9999px;
-      background: linear-gradient(
-        to right,
-        #3b82f6 var(--fill-pct, 0%),
-        #2a2a2a var(--fill-pct, 0%)
-      );
-      outline: none;
-      cursor: pointer;
-      display: block;
-    }
-    .range-slider::-webkit-slider-thumb {
-      -webkit-appearance: none;
-      appearance: none;
-      width: 13px; height: 13px;
-      border-radius: 50%;
-      background: #3b82f6;
-      border: none;
-      cursor: pointer;
-      transition: transform 150ms ease;
-      position: relative;
-      z-index: 1;
-    }
-    .range-slider::-webkit-slider-thumb:hover { transform: scale(1.2); }
-    .range-slider::-moz-range-thumb {
-      width: 13px; height: 13px;
-      border-radius: 50%;
-      background: #3b82f6;
-      border: none;
-      cursor: pointer;
-    }
-    .range-slider:disabled { opacity: 0.4; cursor: not-allowed; }
-
-    .fan-readout { display: flex; flex-direction: column; gap: 1px; }
-    .readout-big { font-size: 22px; font-weight: 500; color: #e0e0e0; line-height: 1.1; }
-    .readout-sub { font-size: 10px; color: #555; }
-
-    /* ─── APPLY BUTTON ─── */
-    .apply-btn {
-      width: 100%; height: 34px;
-      background: #1a2a3a; border: 1px solid #2a4a6a;
-      border-radius: 8px; color: #3b82f6;
-      font-size: 12px; font-weight: 500;
-      transition: background 150ms;
-      display: flex; align-items: center; justify-content: center;
-      margin-top: auto;
-    }
-    .apply-btn:hover:not(:disabled) { background: #1e3040; }
-    .apply-btn:disabled { opacity: 0.35; cursor: not-allowed; }
-    .apply-btn--stop { background: #2a1a1a; border-color: #3a1a1a; color: #ef4444; }
-    .apply-btn--stop:hover:not(:disabled) { background: #3b1e1e; }
-
-    /* ─── FAN SVG ─── */
-    .fan-icon-wrap { display: flex; justify-content: center; padding-top: 4px; }
-    .fan-svg { display: block; }
-    @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
-    .fan-slow { animation: spin 2s linear infinite; transform-origin: 50% 50%; }
-    .fan-mid  { animation: spin 0.8s linear infinite; transform-origin: 50% 50%; }
-    .fan-fast { animation: spin 0.3s linear infinite; transform-origin: 50% 50%; }
-    .fan-paused { animation-play-state: paused; }
-
-    /* ─── RIGHT COLUMN: equal flex to fan card ─── */
+    /* ─── RIGHT COLUMN ─── */
     .right-col { flex: 1; min-width: 0; display: flex; flex-direction: column; }
-    .right-col .card { flex: 1; }
-    .tdp-section { display: flex; flex-direction: column; gap: 8px; }
-    .tdp-display-row { display: flex; align-items: center; justify-content: space-between; }
-    .tdp-mode-stack { display: flex; flex-direction: column; gap: 1px; }
-    .tdp-mode-badge { font-size: 9px; font-weight: 600; color: #555; text-transform: uppercase; letter-spacing: 0.08em; }
-    .tdp-mode-sub { font-size: 9px; color: #3a3a3a; font-style: italic; }
-    .tdp-value { font-size: 26px; font-weight: 500; color: #e0e0e0; line-height: 1; }
-    .tdp-range-labels { display: flex; justify-content: space-between; font-size: 9px; color: #444; }
-
-    /* ─── STRESS PAGE ─── */
-    .page-stress { display: flex; flex-direction: column; gap: 14px; }
-    .page-title-row { display: flex; flex-direction: column; gap: 3px; }
-    .page-sub { font-size: 10px; color: #555; }
-    .stress-config-card { gap: 14px; }
-    .stress-row { display: flex; flex-direction: column; gap: 6px; }
-    .field-label { font-size: 10px; font-weight: 500; color: #666; text-transform: uppercase; letter-spacing: 0.06em; }
-    .seg-control { display: flex; gap: 3px; background: #111; border: 1px solid #222; border-radius: 8px; padding: 2px; }
-    .seg-btn {
-      flex: 1; padding: 5px 0;
-      background: transparent; border: 1px solid transparent;
-      border-radius: 6px; color: #555; font-size: 11px; font-weight: 500;
-      text-align: center; transition: background 150ms, color 150ms, border-color 150ms;
-    }
-    .seg-btn:hover { color: #999; }
-    .seg-btn--active { background: #1a2a3a; border-color: #2a4a6a; color: #3b82f6; }
-    /* Stress shortcut card on quick page */
-    .stress-shortcut-card { border-color: #242424; }
-    .stress-shortcut-card--active {
-      border-color: #3a1a1a;
-      background: #1a0f0f;
-    }
-    .stress-live-badge {
-      font-size: 10px; font-weight: 600; color: #ef4444;
-      animation: pulse-red 1.4s infinite alternate;
-    }
-    @keyframes pulse-red {
-      from { opacity: 1; } to { opacity: 0.4; }
-    }
-    .stress-sc-progress { display: flex; align-items: center; gap: 10px; }
-    .stress-sc-bar-track {
-      flex: 1; height: 4px; background: #2a2a2a;
-      border-radius: 9999px; overflow: hidden;
-    }
-    .stress-sc-bar-fill {
-      height: 100%; background: #ef4444;
-      border-radius: 9999px; transition: width 1s linear;
-    }
-    .stress-sc-timer { font-size: 11px; color: #888; font-variant-numeric: tabular-nums; flex-shrink: 0; }
-    /* Thread grid card */
-    .thread-grid-card { gap: 10px; }
-    .thread-header { display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid #222; padding-bottom: 8px; }
-    .thread-badge { font-size: 10px; color: #ef4444; font-weight: 500; }
-    .thread-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
-    .thread-cell {
-      background: #1a1a1a; border: 1px solid #222; border-radius: 8px;
-      padding: 8px; display: flex; flex-direction: column; align-items: center; gap: 3px;
-      transition: background 300ms, border-color 300ms;
-    }
-    .thread-cell--active { background: #1a0f0f; border-color: #3a1a1a; }
-    .thread-id { font-size: 9px; color: #444; font-weight: 600; }
-    .thread-pct { font-size: 10px; color: #444; }
-    .thread-pct--on { color: #ef4444; font-weight: 600; }
-
-    /* ─── FOOTER ─── */
-    .footer-strip {
-      height: 24px; min-height: 24px;
-      background: #0a0a0a; border-top: 1px solid #1a1a1a;
-      display: flex; align-items: center; justify-content: center;
-      font-size: 10px; color: #333; letter-spacing: 0.05em;
-      flex-shrink: 0; user-select: none;
-    }
+    .right-col app-cpu-power-panel { flex: 1; display: flex; flex-direction: column; }
 
     /* ─── TOASTER ─── */
     .toaster {
