@@ -1,21 +1,93 @@
-<div class="app-container">
+<!-- Template is defined inline inside app.component.ts -->
 
-  <!-- Top Centered Dynamic Island Overlay -->
-  <div class="dynamic-island-container">
-    <div class="dynamic-island" [class.island-active]="stressActive">
-      <div class="island-pill-content">
-        <span class="island-status-dot" [class.pulse-dot-red]="stressActive"></span>
-        <span class="island-status-text">{{ stressActive ? 'STRESS ACTIVE' : 'System Ready' }}</span>
+  
+  <!-- Premium Top Brand Status Bar -->
+  <app-top-bar [status]="statusPillText"></app-top-bar>
+  
+  <!-- Burn Workload Timeline Alert Overlay (dynamic height sliding transition) -->
+  <app-stress-banner 
+    [running]="stressActive" 
+    [elapsed]="stressDuration" 
+    [total]="stressTotal" 
+    (onStop)="toggleStressTest()"
+  ></app-stress-banner>
+  
+  <!-- Hardware Realtime Monitor Strip -->
+  <app-monitor-strip [metrics]="monitorMetrics"></app-monitor-strip>
+  
+  <!-- Slide Down Performance Profiles Cabinet -->
+  <app-profiles-drawer 
+    [open]="profilesOpen" 
+    [activeProfile]="profileName" 
+    (onSelect)="onSelectProfile($event)"
+  ></app-profiles-drawer>
+  
+  <!-- Right edge quick ribbon panels -->
+  <app-bezel-strips 
+    [profilesOpen]="profilesOpen" 
+    [stressRunning]="stressActive" 
+    (onToggleProfiles)="profilesOpen = !profilesOpen" 
+    (onTriggerStress)="toggleStressTest()"
+  ></app-bezel-strips>
+  
+  <!-- Main Grid Workspace Framework -->
+  <div class="flex flex-1 relative min-h-0 bg-[#111111]">
+    
+    <!-- Sidebar Navigation Rail -->
+    <app-nav-rail 
+      [activePage]="activePage" 
+      (pageChange)="activePage = $event"
+    ></app-nav-rail>
+    
+    <!-- Central Scrolling Viewport Area -->
+    <main class="flex-grow p-4 overflow-y-auto relative min-h-0">
+      
+      <!-- Page 1: Quick Tuning Panel -->
+      <div *ngIf="activePage === 'quick'" class="flex flex-col md:flex-row gap-4 h-full">
+        <!-- Cooling Fan controller -->
+        <app-fan-control 
+          class="flex-1" 
+          [fanLevel]="fanLevel" 
+          [manual]="fanEnabled" 
+          (fanLevelChange)="fanLevel = $event" 
+          (manualChange)="fanEnabled = $event" 
+          (onApply)="applyFan()"
+        ></app-fan-control>
+        
+        <!-- AMD Package Power Limits panel -->
+        <app-cpu-power-panel 
+          class="w-full md:w-[260px] shrink-0" 
+          [cpuTdp]="cpuTdp" 
+          [cpuMode]="cpuMode" 
+          (cpuTdpChange)="cpuTdp = $event" 
+          (cpuModeChange)="cpuMode = $event" 
+          (onApply)="applyCustomTdp()"
+        ></app-cpu-power-panel>
       </div>
       
-      <div class="island-expanded-metrics" *ngIf="stressActive">
-        <span class="island-timer">{{ stressDuration }}s</span>
-        <button class="island-stop-btn" (click)="toggleStressTest()">Stop</button>
+      <!-- Page 2: Full System Diagnostics Grid -->
+      <div *ngIf="activePage === 'diagnostics'" class="h-full">
+        <app-diagnostics-panel [data]="cpuLimits"></app-diagnostics-panel>
       </div>
-    </div>
+      
+      <!-- Page 3: CPU Workload Stress Panel -->
+      <div *ngIf="activePage === 'stress'" class="h-full">
+        <app-stress-panel 
+          [stressActive]="stressActive" 
+          [stressDuration]="stressDuration" 
+          (onStartTest)="onStartStress($event)" 
+          (onStopTest)="onStopStress()"
+        ></app-stress-panel>
+      </div>
+      
+    </main>
+    
   </div>
-
-  <!-- Elegant Minimalist Toaster -->
+  
+  <!-- Bottom Pinned Footer Strip -->
+  <app-footer-strip></app-footer-strip>
+  
+  <!-- Floating Micro-Toaster Container -->
   <div class="toaster-container">
     <div *ngFor="let toast of toasts" class="toast-card" [ngClass]="'toast-' + toast.type">
       <span class="toast-icon">
@@ -26,315 +98,5 @@
       <span class="toast-message">{{ toast.message }}</span>
     </div>
   </div>
-
-  <!-- Sidebar / Header Area -->
-  <header class="app-header">
-    <div class="brand">
-      <span class="brand-logo-dot"></span>
-      <div class="brand-text">
-        <h1 class="brand-title">VictusDeck</h1>
-        <span class="brand-subtitle">HP Victus Tuning & Power Management Suite</span>
-      </div>
-    </div>
-    <div class="tabs-nav">
-      <button id="btn-tab-quick" (click)="tab='quick'" [class.active]="tab==='quick'">
-        Quick Control
-      </button>
-      <button id="btn-tab-profile" (click)="tab='profile'" [class.active]="tab==='profile'">
-        Power Profiles
-      </button>
-    </div>
-  </header>
-
-  <!-- Main Grid Content -->
-  <main class="app-grid">
-    
-    <!-- LEFT PANEL: FAN CONTROLS -->
-    <section class="control-panel">
-      
-      <!-- QUICK TAB -->
-      <div *ngIf="tab==='quick'" class="panel-fade">
-        <div class="panel-header">
-          <h2>Cooling Fan Control</h2>
-          <p class="panel-desc">Directly adjust the duty cycle of laptop dual cooling fans.</p>
-        </div>
-
-        <div class="glass-card">
-          <!-- Manual Override Toggle Switch -->
-          <div class="toggle-wrapper-row">
-            <span class="toggle-label-text">Manual Override Control</span>
-            <label class="switch-toggle" for="toggle-fan-control">
-              <input 
-                type="checkbox" 
-                id="toggle-fan-control" 
-                [checked]="fanEnabled" 
-                (change)="toggleFanControl()" 
-              />
-              <span class="slider-toggle-round"></span>
-            </label>
-          </div>
-
-          <div class="slider-group mt-6" [class.disabled-opacity]="!fanEnabled">
-            <div class="slider-header">
-              <label for="slider-quick-fan">Target Speed Checkpoints</label>
-              <span class="badge" [ngClass]="{
-                'badge-disabled': !fanEnabled,
-                'badge-silent': fanEnabled && fanLevel < 25,
-                'badge-balanced': fanEnabled && fanLevel >= 25 && fanLevel < 34,
-                'badge-turbo': fanEnabled && fanLevel >= 34
-              }">
-                {{ !fanEnabled ? 'System Auto' : (fanLevel < 25 ? 'Silent' : (fanLevel < 34 ? 'Balanced' : 'Turbo')) }}
-              </span>
-            </div>
-
-            <div class="slider-wrapper">
-              <input 
-                type="range" 
-                id="slider-quick-fan"
-                min="8" 
-                max="39" 
-                step="1"
-                [(ngModel)]="fanLevel" 
-                [disabled]="!fanEnabled"
-                class="premium-slider"
-              />
-              <div class="slider-track-fill" [style.width.%]="fanEnabled ? getPercent(fanLevel) : 0"></div>
-            </div>
-
-            <div class="slider-value-display">
-              <span class="value">{{ fanEnabled ? getPercent(fanLevel) + '%' : 'Auto' }}</span>
-              <div class="right-info-stack" *ngIf="fanEnabled">
-                <span class="info-rpm">{{ getRpm(fanLevel) }} RPM</span>
-                <span class="info-duty">Duty Level: {{ fanLevel }}/39</span>
-              </div>
-              <span class="subtext" *ngIf="!fanEnabled">Managed by thermal policy</span>
-            </div>
-          </div>
-
-          <button id="btn-apply-fan" class="btn-primary" [disabled]="!fanEnabled" (click)="applyFan()">
-            Apply
-          </button>
-        </div>
-      </div>
-
-      <!-- PROFILE TAB -->
-      <div *ngIf="tab==='profile'" class="panel-fade">
-        <div class="panel-header">
-          <h2>System Performance Profiles</h2>
-          <p class="panel-desc">Configure dynamic power limits and customized fan profiles.</p>
-        </div>
-
-        <!-- Predefined Profiles Grid -->
-        <div class="profiles-grid">
-          <div 
-            *ngFor="let p of profiles" 
-            class="profile-card"
-            [class.selected]="profileName.toLowerCase() === p.name"
-            (click)="selectProfile(p.name)"
-            [attr.id]="'card-profile-' + p.name"
-          >
-            <div class="profile-card-header">
-              <span class="profile-label">{{ p.label }}</span>
-            </div>
-            <p class="profile-desc">{{ p.desc }}</p>
-            <div class="profile-specs">
-              <span>TDP: {{ p.powerLimit }}W</span>
-              <span>Fan: {{ p.fan }}</span>
-            </div>
-          </div>
-        </div>
-
-        <!-- Custom / Details Card -->
-        <div class="glass-card mt-6">
-          <h3>Configure Profile Parameters</h3>
-          
-          <div class="form-group">
-            <label for="input-profile-name">Selected / Custom Profile Name</label>
-            <input 
-              id="input-profile-name" 
-              [(ngModel)]="profileName" 
-              placeholder="Select card above or type customized name" 
-              class="premium-input"
-            />
-          </div>
-
-          <div class="slider-group">
-            <div class="slider-header">
-              <label for="slider-profile-fan">Profile Fan Offset</label>
-              <span class="value-text">{{ getPercent(profileFan) }}% ({{ getRpm(profileFan) }} RPM)</span>
-            </div>
-            <div class="slider-wrapper">
-              <input 
-                type="range" 
-                id="slider-profile-fan"
-                min="8" 
-                max="39" 
-                step="1"
-                [(ngModel)]="profileFan" 
-                class="premium-slider"
-              />
-              <div class="slider-track-fill" [style.width.%]="getPercent(profileFan)"></div>
-            </div>
-          </div>
-
-          <div class="button-group">
-            <button id="btn-save-profile" class="btn-secondary" (click)="saveProfile()">
-              Save Configuration
-            </button>
-            <button id="btn-apply-profile" class="btn-primary" (click)="applyProfile()">
-              Apply
-            </button>
-          </div>
-        </div>
-      </div>
-
-    </section>
-
-    <!-- RIGHT PANEL: AMD RYZEN CPU CONTROLLER -->
-    <section class="control-panel">
-      <div class="panel-header">
-        <h2>AMD Ryzen CPU Power</h2>
-        <p class="panel-desc">Manage package power tracking (TDP) and temperature throttling ceiling.</p>
-      </div>
-
-      <div class="glass-card">
-        <!-- CPU Presets -->
-        <div class="presets-row-header">
-          <label>CPU Power Presets</label>
-        </div>
-        <div class="presets-buttons-grid">
-          <button 
-            class="preset-btn" 
-            [class.active]="cpuMode === 'silent'" 
-            (click)="applyCpuMode('silent')"
-          >
-            <div class="btn-labels">
-              <span class="preset-name">Silent</span>
-              <span class="preset-desc">15W TDP / 70°C</span>
-            </div>
-          </button>
-          <button 
-            class="preset-btn" 
-            [class.active]="cpuMode === 'balanced'" 
-            (click)="applyCpuMode('balanced')"
-          >
-            <div class="btn-labels">
-              <span class="preset-name">Balanced</span>
-              <span class="preset-desc">35W TDP / 80°C</span>
-            </div>
-          </button>
-          <button 
-            class="preset-btn" 
-            [class.active]="cpuMode === 'performance'" 
-            (click)="applyCpuMode('performance')"
-          >
-            <div class="btn-labels">
-              <span class="preset-name">Performance</span>
-              <span class="preset-desc">55W TDP / 90°C</span>
-            </div>
-          </button>
-        </div>
-
-        <!-- Custom Slider -->
-        <div class="slider-group mt-6">
-          <div class="slider-header">
-            <label for="slider-cpu-tdp">Custom TDP Target</label>
-          </div>
-
-          <div class="slider-wrapper">
-            <input 
-              type="range" 
-              id="slider-cpu-tdp"
-              min="8" 
-              max="55" 
-              step="1"
-              [(ngModel)]="cpuTdp" 
-              class="premium-slider"
-            />
-            <div class="slider-track-fill" [style.width.%]="((cpuTdp - 8) / 47) * 100"></div>
-          </div>
-
-          <div class="slider-value-display">
-            <span class="value">{{ cpuTdp }}W</span>
-            <div class="right-info-stack">
-              <span class="info-rpm">{{ cpuMode.toUpperCase() }}</span>
-              <span class="info-duty">Target PPT Limit</span>
-            </div>
-          </div>
-
-          <button id="btn-apply-cpu" class="btn-primary mt-4" (click)="applyCustomTdp()">
-            Apply
-          </button>
-        </div>
-      </div>
-
-      <!-- Real-Time Diagnostics Monitor -->
-      <div class="glass-card mt-6">
-        <div class="card-header-row">
-          <h3>Ryzen Diagnostics Monitor</h3>
-          <span class="pulse-dot" [class.pulse-active]="!cpuErrorMsg"></span>
-        </div>
-
-        <div *ngIf="!cpuErrorMsg && cpuLimits" class="diagnostics-grid">
-          <div class="diagnostic-item">
-            <span class="diag-label">STAPM Power Limit <span class="diag-note">(BIOS-controlled)</span></span>
-            <span class="diag-value">{{ cpuLimits.stapm_limit }}W</span>
-          </div>
-          <div class="diagnostic-item">
-            <span class="diag-label">Fast PPT limit</span>
-            <span class="diag-value">{{ cpuLimits.fast_limit }}W</span>
-          </div>
-          <div class="diagnostic-item">
-            <span class="diag-label">Slow PPT limit</span>
-            <span class="diag-value">{{ cpuLimits.slow_limit }}W</span>
-          </div>
-          <div class="diagnostic-item">
-            <span class="diag-label">Temp Throttle Limit</span>
-            <span class="diag-value">{{ cpuLimits.tctl_temp }}°C</span>
-          </div>
-        </div>
-
-        <div *ngIf="cpuErrorMsg" class="error-container">
-          <div class="error-details">
-            <span class="error-title">Privileged Access Required</span>
-            <p class="error-desc">
-              RyzenAdj requires elevated Administrator permissions to query CPU configurations. Please run VictusDeck as Administrator.
-            </p>
-          </div>
-        </div>
-      </div>
-
-      <!-- CPU Stress Test Card -->
-      <div class="glass-card mt-6">
-        <div class="card-header-row">
-          <h3>Ryzen CPU Stress Test</h3>
-          <span class="pulse-dot" [class.pulse-stress-active]="stressActive"></span>
-        </div>
-        <div class="stress-content">
-          <p class="panel-desc">
-            Synthetic loading utility to load all CPU cores to 100%. Use this to verify wattage limits and fan cooling performance in real time.
-          </p>
-          <div class="stress-metrics-row mt-4" *ngIf="stressActive">
-            <div class="metric-block">
-              <span class="metric-label">Status</span>
-              <span class="metric-value text-red">STRESSING</span>
-            </div>
-            <div class="metric-block">
-              <span class="metric-label">Elapsed Time</span>
-              <span class="metric-value">{{ stressDuration }}s</span>
-            </div>
-          </div>
-          <button 
-            id="btn-stress-test" 
-            class="btn-primary mt-4 w-full stress-btn" 
-            [class.btn-stress-running]="stressActive" 
-            (click)="toggleStressTest()"
-          >
-            {{ stressActive ? 'Stop Stress Test' : 'Start Stress Test' }}
-          </button>
-        </div>
-      </div>
-    </section>
-
-  </main>
+  
 </div>

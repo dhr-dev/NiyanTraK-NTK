@@ -23,7 +23,7 @@ fn set_fan_mode(mode: String) -> String {
 async fn set_cpu_mode(mode: String) -> RyzenAdjResponse {
     match mode.as_str() {
         "performance" => set_performance_mode(),
-        "balanced" => set_balanced_mode(),
+        "balanced" | "bed" => set_balanced_mode(),
         "silent" => set_silent_mode(),
         _ => RyzenAdjResponse {
             success: false,
