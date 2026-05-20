@@ -85,7 +85,7 @@ import { CommonModule } from '@angular/common';
       height: auto;
       min-height: auto;
       background: transparent;
-      padding: 8px 59px 8px 16px;
+      padding: 16px 59px 8px 16px;
       gap: 12px;
       flex-shrink: 0;
       user-select: none;

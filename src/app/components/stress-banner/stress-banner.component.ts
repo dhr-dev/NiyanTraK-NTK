@@ -34,7 +34,7 @@ import { CommonModule } from '@angular/common';
       opacity: 0;
       transition: height 280ms cubic-bezier(0.4,0,0.2,1), opacity 200ms ease, margin 280ms cubic-bezier(0.4,0,0.2,1);
     }
-    .stress-banner--active { height: 38px; opacity: 1; margin: 8px 59px 8px 16px; }
+    .stress-banner--active { height: 38px; opacity: 1; margin: 16px 59px 8px 16px; }
     .stress-bar-track { flex: 1; height: 4px; background: #1e1e1e; border-radius: 9999px; overflow: hidden; }
     .stress-bar-fill { height: 100%; background: #3b82f6; border-radius: 9999px; transition: width 1s linear; }
     .stress-timer { font-size: 10px; color: #666; font-variant-numeric: tabular-nums; }

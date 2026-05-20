@@ -45,80 +45,82 @@ import { FooterStripComponent } from './components/footer-strip/footer-strip.com
         <!-- TOP BAR -->
         <app-top-bar [statusText]="statusPillText"></app-top-bar>
 
-        <!-- STRESS BANNER -->
-        <app-stress-banner
-          [active]="stressActive"
-          [percent]="stressPercent"
-          [remaining]="stressRemaining"
-          (stop)="toggleStressTest()"
-        ></app-stress-banner>
+        <div class="main-frame-body">
+          <!-- STRESS BANNER -->
+          <app-stress-banner
+            [active]="stressActive"
+            [percent]="stressPercent"
+            [remaining]="stressRemaining"
+            (stop)="toggleStressTest()"
+          ></app-stress-banner>
 
-        <!-- MONITOR STRIP -->
-        <app-monitor-strip
-          [metrics]="monitorMetrics"
-          [peakFast]="peakFastPpt"
-          [peakSlow]="peakSlowPpt"
-          [peakTemp]="peakTemp"
-          (reset)="resetPeaks()"
-        ></app-monitor-strip>
+          <!-- MONITOR STRIP -->
+          <app-monitor-strip
+            [metrics]="monitorMetrics"
+            [peakFast]="peakFastPpt"
+            [peakSlow]="peakSlowPpt"
+            [peakTemp]="peakTemp"
+            (reset)="resetPeaks()"
+          ></app-monitor-strip>
 
-        <!-- PROFILES DRAWER -->
-        <app-profiles-drawer
-          [open]="profilesOpen"
-          [currentProfile]="profileName"
-          [profiles]="profiles"
-          (selectProfile)="onSelectProfile($event)"
-        ></app-profiles-drawer>
+          <!-- PROFILES DRAWER -->
+          <app-profiles-drawer
+            [open]="profilesOpen"
+            [currentProfile]="profileName"
+            [profiles]="profiles"
+            (selectProfile)="onSelectProfile($event)"
+          ></app-profiles-drawer>
 
-        <!-- BEZEL RIBBONS: Profiles + Stress on right edge -->
-        <app-bezel-strips
-          [profilesOpen]="profilesOpen"
-          [stressActive]="stressActive"
-          (toggleProfiles)="profilesOpen = !profilesOpen"
-          (toggleStress)="toggleStressTest()"
-        ></app-bezel-strips>
-
-        <!-- VIEWPORT: SCROLLABLE PAGES -->
-        <main class="viewport">
-
-          <!-- QUICK CONTROL PAGE -->
-          <div *ngIf="activePage === 'quick'" class="page-quick">
-            <!-- FAN CONTROL CARD -->
-            <app-fan-control
-              [enabled]="fanEnabled"
-              [level]="fanLevel"
-              (toggle)="toggleFanControl()"
-              (levelChange)="fanLevel = $event"
-              (apply)="applyFan()"
-            ></app-fan-control>
-
-            <!-- RIGHT COLUMN: CPU Power limit stacked -->
-            <aside class="right-col">
-              <app-cpu-power-panel
-                [mode]="cpuMode"
-                [tdp]="cpuTdp"
-                (tdpChange)="cpuTdp = $event"
-                (apply)="applyCustomTdp()"
-              ></app-cpu-power-panel>
-            </aside>
-          </div>
-
-          <!-- STRESS TEST DETAIL PAGE -->
-          <app-stress-panel *ngIf="activePage === 'stress'"
+          <!-- BEZEL RIBBONS: Profiles + Stress on right edge -->
+          <app-bezel-strips
+            [profilesOpen]="profilesOpen"
             [stressActive]="stressActive"
-            [stressDuration]="stressDuration"
-            [stressTotal]="stressTotal"
-            [stressSelectedDuration]="stressSelectedDuration"
-            [stressSelectedIntensity]="stressSelectedIntensity"
-            (selectDuration)="stressSelectedDuration = $event; stressTotal = $event"
-            (selectIntensity)="stressSelectedIntensity = $event"
+            (toggleProfiles)="profilesOpen = !profilesOpen"
             (toggleStress)="toggleStressTest()"
-          ></app-stress-panel>
+          ></app-bezel-strips>
 
-        </main>
+          <!-- VIEWPORT: SCROLLABLE PAGES -->
+          <main class="viewport">
 
-        <!-- FOOTER -->
-        <app-footer-strip></app-footer-strip>
+            <!-- QUICK CONTROL PAGE -->
+            <div *ngIf="activePage === 'quick'" class="page-quick">
+              <!-- FAN CONTROL CARD -->
+              <app-fan-control
+                [enabled]="fanEnabled"
+                [level]="fanLevel"
+                (toggle)="toggleFanControl()"
+                (levelChange)="fanLevel = $event"
+                (apply)="applyFan()"
+              ></app-fan-control>
+
+              <!-- RIGHT COLUMN: CPU Power limit stacked -->
+              <aside class="right-col">
+                <app-cpu-power-panel
+                  [mode]="cpuMode"
+                  [tdp]="cpuTdp"
+                  (tdpChange)="cpuTdp = $event"
+                  (apply)="applyCustomTdp()"
+                ></app-cpu-power-panel>
+              </aside>
+            </div>
+
+            <!-- STRESS TEST DETAIL PAGE -->
+            <app-stress-panel *ngIf="activePage === 'stress'"
+              [stressActive]="stressActive"
+              [stressDuration]="stressDuration"
+              [stressTotal]="stressTotal"
+              [stressSelectedDuration]="stressSelectedDuration"
+              [stressSelectedIntensity]="stressSelectedIntensity"
+              (selectDuration)="stressSelectedDuration = $event; stressTotal = $event"
+              (selectIntensity)="stressSelectedIntensity = $event"
+              (toggleStress)="toggleStressTest()"
+            ></app-stress-panel>
+
+          </main>
+
+          <!-- FOOTER -->
+          <app-footer-strip></app-footer-strip>
+        </div>
 
       </div><!-- /content-col -->
 
@@ -161,6 +163,21 @@ import { FooterStripComponent } from './components/footer-strip/footer-strip.com
       min-width: 0;
       overflow: hidden;
       position: relative;
+      background: #0d0d0d;
+    }
+
+    /* ─── MAIN INNER FRAME PANEL ─── */
+    .main-frame-body {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+      background: #111111;
+      border-top: 1px solid #222;
+      border-left: 1px solid #222;
+      border-top-left-radius: 14px;
+      overflow: hidden;
+      position: relative;
     }
 
     /* ─── VIEWPORT ─── */
@@ -168,7 +185,7 @@ import { FooterStripComponent } from './components/footer-strip/footer-strip.com
       flex: 1;
       min-height: 0;
       overflow-y: auto;
-      padding: 16px 59px 16px 16px;
+      padding: 8px 59px 16px 16px;
     }
     .viewport::-webkit-scrollbar { width: 4px; }
     .viewport::-webkit-scrollbar-track { background: transparent; }
