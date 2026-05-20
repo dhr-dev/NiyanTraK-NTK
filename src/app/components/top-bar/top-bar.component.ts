@@ -19,21 +19,21 @@ import { CommonModule } from '@angular/common';
   styles: [`
     /* ─── TOPBAR ─── */
     .topbar {
-      height: 44px;
-      min-height: 44px;
+      height: 56px;
+      min-height: 56px;
       display: flex;
       align-items: center;
       justify-content: space-between;
-      padding: 0 16px;
+      padding: 0 18px;
       background: #0d0d0d;
       border-bottom: none;
       flex-shrink: 0;
       user-select: none;
     }
-    .brand { display: flex; align-items: center; gap: 8px; }
-    .brand-name { font-size: 13px; font-weight: 600; color: #e0e0e0; }
-    .brand-sep { color: #333; font-size: 12px; }
-    .brand-sub { font-size: 10px; color: #444; }
+    .brand { display: flex; align-items: center; gap: 12px; }
+    .brand-name { font-size: 20px; font-weight: 600; color: #e0e0e0; letter-spacing: -0.015em; }
+    .brand-sep { color: #444; font-size: 16px; }
+    .brand-sub { font-size: 12px; color: #666; font-weight: 500; }
     .status-pill {
       padding: 4px 12px;
       border-radius: 8px;

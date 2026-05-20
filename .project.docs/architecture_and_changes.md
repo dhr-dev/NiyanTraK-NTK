@@ -93,8 +93,8 @@ The parent `AppComponent` remains the central state orchestrator, managing backg
 
 ### Component Architecture Map
 
-*   **NavRailComponent (`app-nav-rail`)**: Left-anchored sidebar navigation rail containing the brand pill and buttons for Quick Control and Stress Test pages.
-*   **TopBarComponent (`app-top-bar`)**: Upper-anchored header displaying the HP Victus subtext and dynamic CPU state status pill.
+*   **NavRailComponent (`app-nav-rail`)**: Left-anchored sidebar navigation rail hosting the primary premium gradient-filled custom geometric Hex Core Silicon Die SVG cluster (representing CoreDeck multi-core silicon and TuneHub interconnect bus traces) acting as the single brand icon anchor for the entire application interface, along with buttons for Quick Control and Stress Test pages.
+*   **TopBarComponent (`app-top-bar`)**: Upper-anchored header displaying the scaled-up "VictusDeck" title, HP Victus subtext, and dynamic CPU state status pill, seamlessly aligned with the primary brand logo in the adjacent Nav Rail.
 *   **StressBannerComponent (`app-stress-banner`)**: Floating overlay displaying progress bar and remaining duration capsule while stress workloads are running.
 *   **MonitorStripComponent (`app-monitor-strip`)**: Real-time telemetry cards (FAST PPT, SLOW PPT, TEMP, STAPM) displaying peak values and hosting the floating peak reset action button.
 *   **ProfilesDrawerComponent (`app-profiles-drawer`)**: Horizontal tray hosting preset performance configuration cards (Battery Saver, Bed Mode, Table Mode, Performance, Extreme, + Custom).
@@ -108,6 +108,7 @@ The parent `AppComponent` remains the central state orchestrator, managing backg
 1. **Style Isolation**: All CSS rules are encapsulated locally within each child component's `@Component.styles` attribute block using pure, vanilla CSS to maintain 100% design fidelity.
 2. **Width Split (50/50 Layout)**: Custom elements `app-fan-control` and `app-cpu-power-panel` are styled with host flex rules (`flex: 1; display: flex; flex-direction: column;`) to preserve perfect visual column sizing.
 3. **Margins & Bezel Peeking**: Layout paddings and absolute overlay coordinate maps leverage the standard `59px` right margin to maintain symmetrical alignment alongside the right edge bezel tabs.
+4. **Curved Inner Frame Dock**: The main content wrapper `.main-frame-body` features a `border-top: 1px solid #222`, `border-left: 1px solid #222`, and `border-top-left-radius: 14px`. This creates a premium, smooth rounded border intersection where the top bar and left nav-rail meet, blending the outer `#0d0d0d` visual frame into the inner `#111111` active dashboard workspace.
 
 ### Visual Design Tokens (enforced)
 | Token            | Value     | Usage                          |
