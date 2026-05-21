@@ -10,6 +10,8 @@ import { CommonModule } from '@angular/common';
     <header class="topbar">
       <div class="brand">
         <img class="brand-logo" src="assets/icons/Workmark-transparent-2.png" alt="NiyanTraK">
+        <span class="brand-sep" *ngIf="cpuName">|</span>
+        <span class="brand-sub" *ngIf="cpuName">{{ cpuName }}</span>
       </div>
 
       <!-- DYNAMIC ISLAND CAPSULE -->
@@ -43,7 +45,7 @@ import { CommonModule } from '@angular/common';
       display: flex;
       align-items: center;
       justify-content: space-between;
-      padding: 8px 0px 0px 0px;
+      padding: 8px 16px 0px 16px;
       background: #0d0d0d;
       border-bottom: none;
       flex-shrink: 0;
@@ -51,9 +53,9 @@ import { CommonModule } from '@angular/common';
       position: relative;
     }
     .brand { display: flex; align-items: center; gap: 12px; }
-    .brand-logo { height: 102px; object-fit: contain; display: block; }
-    .brand-sep { color: #444; font-size: 16px; }
-    .brand-sub { font-size: 12px; color: #666; font-weight: 500; }
+    .brand-logo { height: 102px; object-fit: contain; display: block; margin-left: -16px; }
+    .brand-sep { color: #333; font-size: 14px; font-weight: 300; margin: 0 -4px; }
+    .brand-sub { font-size: 11px; color: #777; font-weight: 600; font-family: inherit; letter-spacing: 0.02em; }
     .status-pill {
       padding: 4px 12px;
       border-radius: 8px;
@@ -81,14 +83,14 @@ import { CommonModule } from '@angular/common';
       align-items: center;
       gap: 8px;
       background: rgba(20, 20, 22, 0.85);
-      border: 1px solid rgba(255, 255, 255, 0.05);
+      border: 1.5px solid rgba(59, 130, 246, 0.25);
       backdrop-filter: blur(12px);
       padding: 6px 14px;
       border-radius: 9999px;
       min-width: 140px;
       justify-content: center;
       transition: all 400ms cubic-bezier(0.175, 0.885, 0.32, 1.275);
-      box-shadow: 0 4px 12px rgba(0,0,0,0.5), inset 0 1px 1px rgba(255,255,255,0.03);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.5), inset 0 1px 1px rgba(255,255,255,0.03), 0 0 10px rgba(59, 130, 246, 0.08);
       color: #999;
       font-size: 11px;
       font-weight: 600;
@@ -110,22 +112,20 @@ import { CommonModule } from '@angular/common';
       padding: 8px 20px;
       background: rgba(15, 15, 17, 0.95);
       color: #e0e0e0;
-      border-color: rgba(255, 255, 255, 0.1);
-      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.7);
       animation: island-spring 350ms cubic-bezier(0.175, 0.885, 0.32, 1.275);
     }
     
     .dynamic-island--success {
-      border-color: rgba(34, 197, 94, 0.2);
-      box-shadow: 0 0 15px rgba(34, 197, 94, 0.05), 0 8px 32px rgba(0,0,0,0.6);
+      border-color: #22c55e;
+      box-shadow: 0 0 15px rgba(34, 197, 94, 0.25), 0 8px 32px rgba(0,0,0,0.7);
     }
     .dynamic-island--error {
-      border-color: rgba(239, 68, 68, 0.2);
-      box-shadow: 0 0 15px rgba(239, 68, 68, 0.05), 0 8px 32px rgba(0,0,0,0.6);
+      border-color: #ef4444;
+      box-shadow: 0 0 15px rgba(239, 68, 68, 0.25), 0 8px 32px rgba(0,0,0,0.7);
     }
     .dynamic-island--info {
-      border-color: rgba(59, 130, 246, 0.2);
-      box-shadow: 0 0 15px rgba(59, 130, 246, 0.05), 0 8px 32px rgba(0,0,0,0.6);
+      border-color: #3b82f6;
+      box-shadow: 0 0 15px rgba(59, 130, 246, 0.25), 0 8px 32px rgba(0,0,0,0.7);
     }
     
     .island-icon-toast {
@@ -165,4 +165,5 @@ export class TopBarComponent {
   @Input() statusText: string = '';
   @Input() activeProfileLabel: string = '';
   @Input() activeToast: any = null;
+  @Input() cpuName: string = '';
 }

@@ -56,18 +56,18 @@ import { CommonModule } from '@angular/common';
     /* ─── STRESS PAGE ─── */
     .page-stress { display: flex; flex-direction: column; gap: 14px; }
     .page-title-row { display: flex; flex-direction: column; gap: 3px; }
-    .page-sub { font-size: 10px; color: #555; }
+    .page-sub { font-size: 10px; color: #888; }
     .stress-config-card { gap: 14px; }
     .stress-row { display: flex; flex-direction: column; gap: 6px; }
-    .field-label { font-size: 10px; font-weight: 500; color: #666; text-transform: uppercase; letter-spacing: 0.06em; }
+    .field-label { font-size: 10px; font-weight: 500; color: #888; text-transform: uppercase; letter-spacing: 0.06em; }
     .seg-control { display: flex; gap: 3px; background: #111; border: 1px solid #222; border-radius: 8px; padding: 2px; }
     .seg-btn {
       flex: 1; padding: 5px 0;
       background: transparent; border: 1px solid transparent;
-      border-radius: 6px; color: #555; font-size: 11px; font-weight: 500;
+      border-radius: 6px; color: #888; font-size: 11px; font-weight: 500;
       text-align: center; transition: background 150ms, color 150ms, border-color 150ms;
     }
-    .seg-btn:hover { color: #999; }
+    .seg-btn:hover { color: #fff; }
     .seg-btn--active { background: #1a2a3a; border-color: #2a4a6a; color: #3b82f6; }
 
     /* ─── CARD ─── */
@@ -100,7 +100,7 @@ import { CommonModule } from '@angular/common';
     /* Thread grid card */
     .thread-grid-card { gap: 10px; }
     .thread-header { display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid #222; padding-bottom: 8px; }
-    .thread-badge { font-size: 10px; color: #ef4444; font-weight: 500; }
+    .thread-badge { font-size: 11.5px; color: #ef4444; font-weight: 500; }
     .thread-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
     .thread-cell {
       background: #1a1a1a; border: 1px solid #222; border-radius: 8px;
@@ -108,8 +108,8 @@ import { CommonModule } from '@angular/common';
       transition: background 300ms, border-color 300ms;
     }
     .thread-cell--active { background: #1a0f0f; border-color: #3a1a1a; }
-    .thread-id { font-size: 9px; color: #444; font-weight: 600; }
-    .thread-pct { font-size: 10px; color: #444; }
+    .thread-id { font-size: 11px; color: #888; font-weight: 600; }
+    .thread-pct { font-size: 11.5px; color: #888; }
     .thread-pct--on { color: #ef4444; font-weight: 600; }
   `]
 })

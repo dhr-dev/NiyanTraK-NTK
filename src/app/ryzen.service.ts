@@ -19,6 +19,8 @@ export interface RyzenAdjResponse {
     apu_skin_value?: number;
     dgpu_skin_limit?: number;
     dgpu_skin_value?: number;
+    dgpu_brand?: string;
+    cpu_name?: string;
     stdout?: string;
     stderr?: string;
   };

@@ -1,32 +1,64 @@
 import { Component, Input, Output, EventEmitter } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 
 @Component({
   selector: 'app-profiles-drawer',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, FormsModule],
   template: `
     <div class="profiles-drawer" [class.profiles-drawer--open]="open">
       <div class="drawer-header">
         <span class="drawer-title">PROFILES</span>
-        <button class="save-preset-btn" (click)="savePreset.emit()" title="Save current settings as a custom profile preset">💾 Save Current</button>
       </div>
-      <div class="drawer-cards">
-        <div *ngFor="let p of profiles"
-          class="drawer-card"
-          [class.drawer-card--active]="currentProfile === p.name"
-          (click)="selectProfile.emit(p.name)"
-        >
-          <div class="drawer-card-name">{{ p.label }}</div>
-          <div class="drawer-card-spec">{{ p.powerLimit }}W · {{ p.fanLabel }}</div>
+      <div class="drawer-cards-wrapper" (mouseenter)="checkOverflow(cardsContainer)">
+        <button *ngIf="hasOverflow" class="scroll-btn scroll-btn--left" (click)="cardsContainer.scrollBy({ left: -240, behavior: 'smooth' })" title="Scroll left">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="14" height="14">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5 8.25 12l7.5-7.5" />
+          </svg>
+        </button>
+        <div #cardsContainer class="drawer-cards">
+          <div *ngFor="let p of profiles"
+            class="drawer-card"
+            [class.drawer-card--active]="currentProfile === p.name"
+            (click)="selectProfile.emit(p.name)"
+          >
+            <div class="drawer-card-header">
+              <span class="drawer-card-name">{{ p.label }}</span>
+              <button *ngIf="p.isCustom" class="delete-preset-btn" (click)="onDelete($event, p.name)" title="Delete custom preset">🗑️</button>
+            </div>
+            <div class="drawer-card-spec">{{ p.powerLimit }}W · {{ p.tempLimit }}°C · {{ p.fanLabel }}</div>
+          </div>
+          <div class="drawer-card"
+            [class.drawer-card--active]="currentProfile === 'custom'"
+            (click)="onCustomCardClick()"
+          >
+            <ng-container *ngIf="currentProfile !== 'custom'; else customInputForm">
+              <div class="drawer-card-name">+ Custom</div>
+              <div class="drawer-card-spec">Manual</div>
+            </ng-container>
+            <ng-template #customInputForm>
+              <div class="custom-form" (click)="$event.stopPropagation()">
+                <input
+                  type="text"
+                  class="custom-preset-input"
+                  placeholder="Preset Name"
+                  [(ngModel)]="customPresetName"
+                  (keydown.enter)="onSaveCustom()"
+                  #customInput
+                />
+                <button class="custom-save-btn" (click)="onSaveCustom()">
+                  Save
+                </button>
+              </div>
+            </ng-template>
+          </div>
         </div>
-        <div class="drawer-card"
-          [class.drawer-card--active]="currentProfile === 'custom'"
-          (click)="selectProfile.emit('custom')"
-        >
-          <div class="drawer-card-name">+ Custom</div>
-          <div class="drawer-card-spec">Manual</div>
-        </div>
+        <button *ngIf="hasOverflow" class="scroll-btn scroll-btn--right" (click)="cardsContainer.scrollBy({ left: 240, behavior: 'smooth' })" title="Scroll right">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="14" height="14">
+            <path stroke-linecap="round" stroke-linejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" />
+          </svg>
+        </button>
       </div>
     </div>
   `,
@@ -56,20 +88,47 @@ import { CommonModule } from '@angular/common';
       justify-content: space-between;
       padding: 12px 16px 8px;
     }
-    .drawer-title { font-size: 10px; font-weight: 600; color: #555; text-transform: uppercase; letter-spacing: 0.1em; }
-    .save-preset-btn {
-      background: #1a2a3a;
-      border: 1px solid #2a4a6a;
-      color: #3b82f6;
-      font-size: 10px;
-      font-weight: 500;
-      padding: 4px 8px;
-      border-radius: 6px;
-      cursor: pointer;
-      transition: background 150ms;
+    .drawer-title { font-size: 11.5px; font-weight: 600; color: #888; text-transform: uppercase; letter-spacing: 0.1em; }
+    /* Inline Custom Form inside Card */
+    .custom-form {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      width: 100%;
     }
-    .save-preset-btn:hover {
-      background: #1e3040;
+    .custom-preset-input {
+      width: 100%;
+      background: #1e1e1e;
+      border: 1px solid #333;
+      border-radius: 6px;
+      color: #e0e0e0;
+      font-size: 12px;
+      padding: 4px 8px;
+      outline: none;
+      transition: border-color 150ms ease, box-shadow 150ms ease;
+    }
+    .custom-preset-input:focus {
+      border-color: #3b82f6;
+      box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+    }
+    .custom-save-btn {
+      width: 100%;
+      background: #3b82f6;
+      border: none;
+      border-radius: 6px;
+      color: #ffffff;
+      font-size: 11.5px;
+      font-weight: 600;
+      padding: 4px 0;
+      cursor: pointer;
+      text-align: center;
+      transition: background 150ms ease, transform 100ms ease;
+    }
+    .custom-save-btn:hover {
+      background: #2563eb;
+    }
+    .custom-save-btn:active {
+      transform: scale(0.97);
     }
     .drawer-cards {
       display: flex;
@@ -80,7 +139,7 @@ import { CommonModule } from '@angular/common';
     .drawer-cards::-webkit-scrollbar { display: none; }
     .drawer-card {
       flex-shrink: 0;
-      width: 130px;
+      width: 160px;
       background: #171717;
       border: 1px solid #242424;
       border-radius: 10px;
@@ -97,9 +156,90 @@ import { CommonModule } from '@angular/common';
       border-bottom-color: #1a3a5a;
       border-radius: 0 10px 10px 0;
     }
-    /* Profile name: larger and clearly readable */
-    .drawer-card-name { font-size: 13px; font-weight: 600; color: #ddd; }
-    .drawer-card-spec { font-size: 10px; color: #555; text-transform: uppercase; margin-top: 3px; letter-spacing: 0.04em; }
+    .drawer-card--active .drawer-card-spec {
+      color: #a3cfff;
+    }
+    /* Profile header and name */
+    .drawer-card-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 4px;
+    }
+    .drawer-card-name { font-size: 13px; font-weight: 600; color: #ddd; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .drawer-card-spec {
+      font-size: 11px;
+      color: #888;
+      text-transform: uppercase;
+      margin-top: 3px;
+      letter-spacing: 0.03em;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    
+    .delete-preset-btn {
+      background: transparent;
+      border: none;
+      color: #888;
+      font-size: 10px;
+      padding: 2px;
+      cursor: pointer;
+      border-radius: 4px;
+      transition: color 150ms, background 150ms;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .delete-preset-btn:hover {
+      color: #ef4444;
+      background: rgba(239, 68, 68, 0.15);
+    }
+
+    /* ─── SCROLLABLE PROFILE GUTTERS ─── */
+    .drawer-cards-wrapper {
+      position: relative;
+      width: 100%;
+    }
+    .scroll-btn {
+      position: absolute;
+      top: calc(50% - 6px); /* Align perfectly since drawer-cards has bottom padding */
+      transform: translateY(-50%);
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      background: rgba(23, 23, 23, 0.85);
+      border: 1px solid #242424;
+      color: #888;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      z-index: 10;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 200ms ease, background 150ms ease, border-color 150ms ease, transform 100ms ease;
+      backdrop-filter: blur(4px);
+    }
+    .drawer-cards-wrapper:hover .scroll-btn {
+      opacity: 1;
+      pointer-events: auto;
+    }
+    .scroll-btn:hover {
+      background: #1e1e1e;
+      border-color: #3b82f6;
+      color: #3b82f6;
+      box-shadow: 0 4px 12px rgba(59, 130, 246, 0.15);
+    }
+    .scroll-btn:active {
+      transform: translateY(-50%) scale(0.9);
+    }
+    .scroll-btn--left {
+      left: 6px;
+    }
+    .scroll-btn--right {
+      right: 6px;
+    }
   `]
 })
 export class ProfilesDrawerComponent {
@@ -107,5 +247,33 @@ export class ProfilesDrawerComponent {
   @Input() currentProfile: string = '';
   @Input() profiles: any[] = [];
   @Output() selectProfile = new EventEmitter<string>();
-  @Output() savePreset = new EventEmitter<void>();
+  @Output() savePreset = new EventEmitter<string>();
+  @Output() deletePreset = new EventEmitter<string>();
+
+  hasOverflow = false;
+  customPresetName: string = '';
+
+  onDelete(event: Event, name: string) {
+    event.stopPropagation();
+    this.deletePreset.emit(name);
+  }
+
+  checkOverflow(el: HTMLElement) {
+    this.hasOverflow = el.scrollWidth > el.clientWidth;
+  }
+
+  onCustomCardClick() {
+    if (this.currentProfile !== 'custom') {
+      this.selectProfile.emit('custom');
+      this.customPresetName = '';
+    }
+  }
+
+  onSaveCustom() {
+    const trimmed = this.customPresetName.trim();
+    if (trimmed) {
+      this.savePreset.emit(trimmed);
+      this.customPresetName = '';
+    }
+  }
 }

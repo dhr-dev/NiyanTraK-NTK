@@ -6,19 +6,8 @@ import { CommonModule } from '@angular/common';
   standalone: true,
   imports: [CommonModule],
   template: `
-    <!-- BEZEL RIBBONS: Profiles + Stress on right edge -->
+    <!-- BEZEL RIBBONS: Stress on right edge -->
     <div class="bezel-wrap">
-      <!-- Profiles ribbon: always visible, toggles the drawer -->
-      <div class="ribbon"
-        [class.ribbon--open]="profilesOpen"
-        (click)="toggleProfiles.emit()"
-        title="Performance Profiles"
-      >
-        <svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16">
-          <path fill-rule="evenodd" d="M7.5 6a4.5 4.5 0 1 1 9 0 4.5 4.5 0 0 1-9 0ZM3.751 20.105a8.25 8.25 0 0 1 16.498 0 .75.75 0 0 1-.437.695A18.683 18.683 0 0 1 12 22.5c-2.786 0-5.433-.608-7.812-1.7a.75.75 0 0 1-.437-.695Z" clip-rule="evenodd"/>
-        </svg>
-        <span class="ribbon-text">{{ profilesOpen ? '✕ CLOSE' : 'PROFILES' }}</span>
-      </div>
       <!-- Stress ribbon: always visible, toggles stress test -->
       <div class="ribbon ribbon--stress"
         [class.ribbon--stress-on]="stressActive"
@@ -44,9 +33,9 @@ import { CommonModule } from '@angular/common';
       flex-direction: column;
       gap: 6px;
     }
-    /* Shared ribbon base */
+    /* Shared ribbon base: narrowed to 58px for a cleaner bezel profile */
     .ribbon {
-      width: 84px;
+      width: 58px;
       height: 52px;
       background: #111827;
       border: 1px solid #1e3a5f;
@@ -71,15 +60,6 @@ import { CommonModule } from '@angular/common';
       border-left-color: #3b82f6;
       color: #7ab8f5;
     }
-    /* Profiles: open/active state */
-    .ribbon--open {
-      background: #1a2e4a;
-      border-color: #3b82f6;
-      border-left-color: #3b82f6;
-      color: #93c5fd;
-      transform: translateX(-5px);
-    }
-    .ribbon--open:hover { background: #1e3550; color: #bfdbfe; }
     /* Stress ribbon: same shape, red accent */
     .ribbon--stress {
       border-color: #3a1220;
@@ -110,8 +90,6 @@ import { CommonModule } from '@angular/common';
   `]
 })
 export class BezelStripsComponent {
-  @Input() profilesOpen: boolean = false;
   @Input() stressActive: boolean = false;
-  @Output() toggleProfiles = new EventEmitter<void>();
   @Output() toggleStress = new EventEmitter<void>();
 }

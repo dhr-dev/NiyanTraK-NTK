@@ -22,10 +22,10 @@ export interface DiagnosticsData {
       <div class="flex items-center justify-between">
         <div class="flex flex-col">
           <h2 class="text-[13px] font-medium text-[#ccc] uppercase tracking-wider">Ryzen Diagnostics Dashboard</h2>
-          <span class="text-[10px] text-[#555] font-normal mt-[2px]">Real-time hardware limit tables & thermal thresholds</span>
+          <span class="text-[12px] text-[#888] font-normal mt-[2px]">Real-time hardware limit tables & thermal thresholds</span>
         </div>
         <div class="flex items-center gap-2 px-3 py-1 rounded-[4px] bg-[#161616] border border-border-muted">
-          <span class="text-[10px] font-medium text-[#888]">POLLING ONLINE</span>
+          <span class="text-[12px] font-medium text-[#888]">POLLING ONLINE</span>
           <span class="w-[6px] h-[6px] rounded-full bg-accent-green pulse-dot"></span>
         </div>
       </div>
@@ -36,7 +36,7 @@ export interface DiagnosticsData {
         <!-- Grid Tile 1: Fast PPT Limit -->
         <div class="bg-card-bg border border-border-muted rounded-[6px] p-4 flex flex-col justify-between h-[90px]">
           <div class="flex items-baseline justify-between">
-            <span class="text-[9px] text-[#555] uppercase tracking-wider font-semibold">Fast PPT Limit</span>
+            <span class="text-[11px] text-[#888] uppercase tracking-wider font-semibold">Fast PPT Limit</span>
             <span class="text-[18px] font-medium text-[#ccc] leading-none">{{ data?.fast_limit ?? 20 }}W</span>
           </div>
           <div class="w-full flex flex-col gap-1">
@@ -47,7 +47,7 @@ export interface DiagnosticsData {
                 [style.width.%]="getPercent(data?.fast_limit ?? 20, 55)"
               ></div>
             </div>
-            <div class="flex items-center justify-between text-[9px] text-[#444]">
+            <div class="flex items-center justify-between text-[11px] text-[#888]">
               <span>Current limit</span>
               <span>Max: 55W</span>
             </div>
@@ -57,7 +57,7 @@ export interface DiagnosticsData {
         <!-- Grid Tile 2: Slow PPT Limit -->
         <div class="bg-card-bg border border-border-muted rounded-[6px] p-4 flex flex-col justify-between h-[90px]">
           <div class="flex items-baseline justify-between">
-            <span class="text-[9px] text-[#555] uppercase tracking-wider font-semibold">Slow PPT Limit</span>
+            <span class="text-[11px] text-[#888] uppercase tracking-wider font-semibold">Slow PPT Limit</span>
             <span class="text-[18px] font-medium text-[#ccc] leading-none">{{ data?.slow_limit ?? 54 }}W</span>
           </div>
           <div class="w-full flex flex-col gap-1">
@@ -68,7 +68,7 @@ export interface DiagnosticsData {
                 [style.width.%]="getPercent(data?.slow_limit ?? 54, 55)"
               ></div>
             </div>
-            <div class="flex items-center justify-between text-[9px] text-[#444]">
+            <div class="flex items-center justify-between text-[11px] text-[#888]">
               <span>Current limit</span>
               <span>Max: 55W</span>
             </div>
@@ -78,7 +78,7 @@ export interface DiagnosticsData {
         <!-- Grid Tile 3: Temp Throttle -->
         <div class="bg-card-bg border border-border-muted rounded-[6px] p-4 flex flex-col justify-between h-[90px]">
           <div class="flex items-baseline justify-between">
-            <span class="text-[9px] text-[#555] uppercase tracking-wider font-semibold">Temp Throttle Limit</span>
+            <span class="text-[11px] text-[#888] uppercase tracking-wider font-semibold">Temp Throttle Limit</span>
             <span class="text-[18px] font-medium text-[#ccc] leading-none">{{ data?.tctl_temp ?? 90 }}°C</span>
           </div>
           <div class="w-full flex flex-col gap-1">
@@ -89,7 +89,7 @@ export interface DiagnosticsData {
                 [style.width.%]="getPercent(data?.tctl_temp ?? 90, 100)"
               ></div>
             </div>
-            <div class="flex items-center justify-between text-[9px] text-[#444]">
+            <div class="flex items-center justify-between text-[11px] text-[#888]">
               <span>Current limit</span>
               <span>Max: 100°C</span>
             </div>
@@ -99,15 +99,15 @@ export interface DiagnosticsData {
         <!-- Grid Tile 4: STAPM Limit -->
         <div class="bg-card-bg border border-border-muted rounded-[6px] p-4 flex flex-col justify-between h-[90px]">
           <div class="flex items-baseline justify-between">
-            <span class="text-[9px] text-[#555] uppercase tracking-wider font-semibold">STAPM Limit</span>
+            <span class="text-[11px] text-[#888] uppercase tracking-wider font-semibold">STAPM Limit</span>
             <span class="text-[18px] font-medium text-[#ccc] leading-none">{{ data?.stapm_limit ?? 45 }}W</span>
           </div>
           <div class="w-full flex flex-col gap-1 mt-3">
-            <div class="text-[10px] text-accent-blue font-medium flex items-center gap-1">
+            <div class="text-[12px] text-accent-blue font-medium flex items-center gap-1">
               <span>●</span>
               <span>SYSTEM BIOS MANAGED</span>
             </div>
-            <span class="text-[9px] text-[#444] italic">(BIOS-controlled)</span>
+            <span class="text-[11px] text-[#888] italic">(BIOS-controlled)</span>
           </div>
         </div>
         
@@ -116,8 +116,8 @@ export interface DiagnosticsData {
       <!-- Graph mockup area (Vercel/Linear style, no neon, 10% opacity fill) -->
       <div class="flex-1 bg-card-bg border border-border-muted rounded-[6px] p-4 flex flex-col gap-3 min-h-[160px]">
         <div class="flex items-center justify-between border-b border-border-muted pb-2">
-          <span class="text-[10px] text-[#aaa] uppercase font-medium tracking-wider">Package Power History (20s)</span>
-          <span class="text-[10px] text-accent-blue font-mono font-medium">Avg load: 24.5W</span>
+          <span class="text-[12px] text-[#aaa] uppercase font-medium tracking-wider">Package Power History (20s)</span>
+          <span class="text-[12px] text-accent-blue font-mono font-medium">Avg load: 24.5W</span>
         </div>
         
         <!-- Vector SVG Chart Mockup -->

@@ -41,6 +41,7 @@ import { FooterStripComponent } from './components/footer-strip/footer-strip.com
         [statusText]="statusPillText"
         [activeProfileLabel]="activeProfileLabel"
         [activeToast]="activeToast"
+        [cpuName]="cpuName"
       ></app-top-bar>
 
       <!-- MAIN CONTAINER -->
@@ -64,6 +65,7 @@ import { FooterStripComponent } from './components/footer-strip/footer-strip.com
             [peakFast]="peakFastPpt"
             [peakSlow]="peakSlowPpt"
             [peakTemp]="peakTemp"
+            [dgpuBrand]="dgpuBrand"
             (reset)="resetPeaks()"
           ></app-monitor-strip>
 
@@ -73,14 +75,13 @@ import { FooterStripComponent } from './components/footer-strip/footer-strip.com
             [currentProfile]="profileName"
             [profiles]="profiles"
             (selectProfile)="onSelectProfile($event)"
-            (savePreset)="saveCustomPreset()"
+            (savePreset)="saveCustomPreset($event)"
+            (deletePreset)="deleteCustomPreset($event)"
           ></app-profiles-drawer>
 
           <!-- BEZEL RIBBONS: Profiles + Stress on right edge -->
           <app-bezel-strips
-            [profilesOpen]="profilesOpen"
             [stressActive]="stressActive"
-            (toggleProfiles)="profilesOpen = !profilesOpen"
             (toggleStress)="toggleStressTest()"
           ></app-bezel-strips>
 
@@ -103,9 +104,9 @@ import { FooterStripComponent } from './components/footer-strip/footer-strip.com
                 <app-cpu-power-panel
                   [mode]="cpuMode"
                   [tdp]="cpuTdp"
-                  (tdpChange)="cpuTdp = $event"
+                  (tdpChange)="cpuTdp = $event; cpuMode = 'custom'; profileName = 'custom'"
                   [tempLimit]="cpuTempLimit"
-                  (tempLimitChange)="cpuTempLimit = $event"
+                  (tempLimitChange)="cpuTempLimit = $event; cpuMode = 'custom'; profileName = 'custom'"
                   (apply)="applyCustomTdp()"
                 ></app-cpu-power-panel>
               </aside>
@@ -233,6 +234,8 @@ export class AppComponent implements OnInit, OnDestroy {
   // Navigation
   activePage: 'quick' | 'stress' = 'quick';
   profilesOpen = true;
+  cpuName = '';
+  dgpuBrand = 'UNKNOWN';
 
   // Fan state
   fanLevel = 30;
@@ -280,11 +283,11 @@ export class AppComponent implements OnInit, OnDestroy {
   readonly threadCores = [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16];
 
   profiles: any[] = [
-    { name: 'battery',     powerLimit: 12, fan: 'silent',   fanLevel: 8,  fanLabel: 'Silent',  label: 'Battery Saver'   },
-    { name: 'laptop',      powerLimit: 25, fan: 'balanced',  fanLevel: 30, fanLabel: 'Quiet',   label: 'Bed Mode'        },
-    { name: 'table',       powerLimit: 35, fan: 'medium',    fanLevel: 30, fanLabel: 'Med',     label: 'Table Mode'      },
-    { name: 'performance', powerLimit: 45, fan: 'high',      fanLevel: 34, fanLabel: 'High',    label: 'Performance'     },
-    { name: 'extreme',     powerLimit: 55, fan: 'max',       fanLevel: 39, fanLabel: 'Max',     label: 'Extreme'         }
+    { name: 'battery',     powerLimit: 12, fan: 'silent',   fanLevel: 8,  fanLabel: 'Silent',  label: 'Battery Saver', tempLimit: 90 },
+    { name: 'laptop',      powerLimit: 25, fan: 'balanced',  fanLevel: 30, fanLabel: 'Quiet',   label: 'Bed Mode',      tempLimit: 90 },
+    { name: 'table',       powerLimit: 35, fan: 'medium',    fanLevel: 30, fanLabel: 'Med',     label: 'Table Mode',    tempLimit: 90 },
+    { name: 'performance', powerLimit: 45, fan: 'high',      fanLevel: 34, fanLabel: 'High',    label: 'Performance',   tempLimit: 90 },
+    { name: 'extreme',     powerLimit: 55, fan: 'max',       fanLevel: 39, fanLabel: 'Max',     label: 'Extreme',       tempLimit: 90 }
   ];
 
   // ── Getters ──
@@ -405,6 +408,12 @@ export class AppComponent implements OnInit, OnDestroy {
     if (res.success && res.data) {
       this.cpuLimits = res.data;
       this.cpuErrorMsg = '';
+      if (res.data.cpu_name !== undefined && res.data.cpu_name !== null) {
+        this.cpuName = res.data.cpu_name;
+      }
+      if (res.data.dgpu_brand !== undefined && res.data.dgpu_brand !== null) {
+        this.dgpuBrand = res.data.dgpu_brand;
+      }
       // Update peak values from real-time sensors with explicit null guards
       if (this.cpuLimits.fast_value !== undefined && this.cpuLimits.fast_value !== null && this.cpuLimits.fast_value > this.peakFastPpt) {
         this.peakFastPpt = Math.round(this.cpuLimits.fast_value);
@@ -418,8 +427,8 @@ export class AppComponent implements OnInit, OnDestroy {
       if (this.cpuLimits.stapm_value !== undefined && this.cpuLimits.stapm_value !== null && this.cpuLimits.stapm_value > this.peakStapm) {
         this.peakStapm = Math.round(this.cpuLimits.stapm_value);
       }
-      // Sync tempLimit from active core throttle target
-      if (this.cpuLimits.tctl_limit !== undefined && this.cpuLimits.tctl_limit !== null) {
+      // Sync tempLimit from active core throttle target only if not in custom mode
+      if (this.cpuMode !== 'custom' && this.cpuLimits.tctl_limit !== undefined && this.cpuLimits.tctl_limit !== null && this.cpuLimits.tctl_limit >= 50) {
         this.cpuTempLimit = Math.round(this.cpuLimits.tctl_limit);
       }
     } else {
@@ -525,11 +534,11 @@ export class AppComponent implements OnInit, OnDestroy {
       const dataStr = await this.ryzenService.loadCustomPresets();
       const custom = JSON.parse(dataStr || '[]');
       this.profiles = [
-        { name: 'battery',     powerLimit: 12, fan: 'silent',   fanLevel: 8,  fanLabel: 'Silent',  label: 'Battery Saver'   },
-        { name: 'laptop',      powerLimit: 25, fan: 'balanced',  fanLevel: 30, fanLabel: 'Quiet',   label: 'Bed Mode'        },
-        { name: 'table',       powerLimit: 35, fan: 'medium',    fanLevel: 30, fanLabel: 'Med',     label: 'Table Mode'      },
-        { name: 'performance', powerLimit: 45, fan: 'high',      fanLevel: 34, fanLabel: 'High',    label: 'Performance'     },
-        { name: 'extreme',     powerLimit: 55, fan: 'max',       fanLevel: 39, fanLabel: 'Max',     label: 'Extreme'         }
+        { name: 'battery',     powerLimit: 12, fan: 'silent',   fanLevel: 8,  fanLabel: 'Silent',  label: 'Battery Saver', tempLimit: 90 },
+        { name: 'laptop',      powerLimit: 25, fan: 'balanced',  fanLevel: 30, fanLabel: 'Quiet',   label: 'Bed Mode',      tempLimit: 90 },
+        { name: 'table',       powerLimit: 35, fan: 'medium',    fanLevel: 30, fanLabel: 'Med',     label: 'Table Mode',    tempLimit: 90 },
+        { name: 'performance', powerLimit: 45, fan: 'high',      fanLevel: 34, fanLabel: 'High',    label: 'Performance',   tempLimit: 90 },
+        { name: 'extreme',     powerLimit: 55, fan: 'max',       fanLevel: 39, fanLabel: 'Max',     label: 'Extreme',       tempLimit: 90 }
       ];
       if (Array.isArray(custom)) {
         for (const p of custom) {
@@ -541,13 +550,7 @@ export class AppComponent implements OnInit, OnDestroy {
     }
   }
 
-  async saveCustomPreset() {
-    let defaultName = '';
-    const currentP = this.profiles.find(p => p.name === this.profileName);
-    if (currentP && currentP.isCustom) {
-      defaultName = currentP.label;
-    }
-    const name = prompt('Enter a name for the custom profile preset:', defaultName);
+  async saveCustomPreset(name: string) {
     if (!name) return;
     const trimmed = name.trim();
     if (!trimmed) return;
@@ -583,6 +586,27 @@ export class AppComponent implements OnInit, OnDestroy {
       this.profileName = presetObj.name;
     } catch (err) {
       this.showToast(`Failed to save preset: ${err}`, 'error');
+    }
+  }
+
+  async deleteCustomPreset(name: string) {
+    const p = this.profiles.find(item => item.name === name);
+    if (!p) return;
+    const confirmDelete = confirm(`Are you sure you want to delete the custom preset '${p.label}'?`);
+    if (!confirmDelete) return;
+
+    this.profiles = this.profiles.filter(item => item.name !== name);
+    if (this.profileName === name) {
+      this.profileName = '';
+      this.cpuMode = 'custom';
+    }
+
+    const customOnly = this.profiles.filter(p => p.isCustom);
+    try {
+      await this.ryzenService.saveCustomPresets(JSON.stringify(customOnly));
+      this.showToast(`Preset '${p.label}' deleted successfully!`, 'info');
+    } catch (err) {
+      this.showToast(`Failed to delete preset: ${err}`, 'error');
     }
   }
 
