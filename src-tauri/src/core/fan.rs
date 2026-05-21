@@ -1,5 +1,8 @@
 use std::process::Command;
 
+#[cfg(windows)]
+use std::os::windows::process::CommandExt;
+
 pub fn apply_fan_mode(mode: &str) -> String {
     let script_path = r"C:\Program Files\fanControl\omen-hub-but-better\OmenHwCtl.ps1";
 
@@ -14,16 +17,20 @@ pub fn apply_fan_mode(mode: &str) -> String {
         _ => "30:30",
     };
 
-    let output = Command::new("powershell")
-        .args([
-            "-ExecutionPolicy",
-            "Bypass",
-            "-File",
-            script_path,
-            "-SetFanLevel",
-            level,
-        ])
-        .output();
+    let mut cmd = Command::new("powershell");
+    cmd.args([
+        "-ExecutionPolicy",
+        "Bypass",
+        "-File",
+        script_path,
+        "-SetFanLevel",
+        level,
+    ]);
+
+    #[cfg(windows)]
+    cmd.creation_flags(0x08000000);
+
+    let output = cmd.output();
 
     match output {
         Ok(o) => {

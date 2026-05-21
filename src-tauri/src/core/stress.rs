@@ -25,7 +25,7 @@ pub fn start_cpu_stress() -> bool {
                 for _ in 0..5000 {
                     x = (x + 0.0001).sqrt().sin().cos();
                 }
-                // Yield to ensure OS and VictusDeck UI threads remain completely responsive
+                // Yield to ensure OS and NiyanTraK UI threads remain completely responsive
                 thread::yield_now();
             }
             println!("[Stress Test] Thread {} stopped", i);

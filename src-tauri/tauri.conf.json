@@ -1,18 +1,18 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "victus-deck",
+  "productName": "NiyanTraK",
   "version": "0.1.0",
-  "identifier": "com.dhruvil.victus-deck",
+  "identifier": "com.dhruvil.niyantrak",
   "build": {
     "beforeDevCommand": "npm run start",
     "devUrl": "http://localhost:1420",
     "beforeBuildCommand": "npm run build",
-    "frontendDist": "../dist/victus-deck/browser"
+    "frontendDist": "../dist/niyantrak/browser"
   },
   "app": {
     "windows": [
       {
-        "title": "victus-deck",
+        "title": "NiyanTraK",
         "width": 800,
         "height": 600,
         "backgroundColor": "#0d0f14"

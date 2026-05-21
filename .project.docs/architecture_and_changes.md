@@ -1,12 +1,12 @@
-# VictusDeck System Architecture Documentation
+# NiyanTraK System Architecture Documentation
 
-Welcome to the **VictusDeck** architecture documentation. This document outlines the system components, data flows, and design decisions of the hardware control suite.
+Welcome to the **NiyanTraK** architecture documentation. This document outlines the system components, data flows, and design decisions of the hardware control suite.
 
 ---
 
 ## 1. System Architecture Overview
 
-VictusDeck is a hybrid desktop application designed to control hardware settings (specifically fan speeds and power limits) on HP Victus series laptops. It is built using the following technologies:
+NiyanTraK is a hybrid desktop application designed to control hardware settings (specifically fan speeds and power limits) on HP Victus series laptops. It is built using the following technologies:
 - **Frontend**: Angular 20 (Standalone Component structure)
 - **Desktop Runtime**: Tauri v2
 - **Backend / System Interface**: Rust (with a safe execution layer interfacing with PowerShell scripts and low-level system binaries)
@@ -93,8 +93,8 @@ The parent `AppComponent` remains the central state orchestrator, managing backg
 
 ### Component Architecture Map
 
-*   **NavRailComponent (`app-nav-rail`)**: Left-anchored sidebar navigation rail hosting the primary premium gradient-filled custom geometric Hex Core Silicon Die SVG cluster (representing CoreDeck multi-core silicon and TuneHub interconnect bus traces) acting as the single brand icon anchor for the entire application interface, along with buttons for Quick Control and Stress Test pages.
-*   **TopBarComponent (`app-top-bar`)**: Upper-anchored header displaying the scaled-up "VictusDeck" title, HP Victus subtext, and dynamic CPU state status pill, seamlessly aligned with the primary brand logo in the adjacent Nav Rail.
+*   **NavRailComponent (`app-nav-rail`)**: Left-anchored sidebar navigation rail docked underneath the horizontal Top Bar, hosting buttons for Quick Control and Stress Test pages.
+*   **TopBarComponent (`app-top-bar`)**: Upper-anchored header spanning the entire width horizontally, displaying the custom brand logo in the top-left corner and the dynamic CPU state status pill on the right.
 *   **StressBannerComponent (`app-stress-banner`)**: Floating overlay displaying progress bar and remaining duration capsule while stress workloads are running.
 *   **MonitorStripComponent (`app-monitor-strip`)**: Real-time telemetry cards (FAST PPT, SLOW PPT, TEMP, STAPM) displaying peak values and hosting the floating peak reset action button.
 *   **ProfilesDrawerComponent (`app-profiles-drawer`)**: Horizontal tray hosting preset performance configuration cards (Battery Saver, Bed Mode, Table Mode, Performance, Extreme, + Custom).

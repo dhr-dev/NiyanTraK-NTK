@@ -36,14 +36,14 @@ import { FooterStripComponent } from './components/footer-strip/footer-strip.com
   template: `
     <div class="app-shell">
 
-      <!-- LEFT: FULL-HEIGHT NAV RAIL -->
-      <app-nav-rail [activePage]="activePage" (pageChange)="activePage = $event"></app-nav-rail>
+      <!-- TOP BAR -->
+      <app-top-bar [statusText]="statusPillText"></app-top-bar>
 
-      <!-- RIGHT: ALL CONTENT STACKED VERTICALLY -->
-      <div class="content-col">
+      <!-- MAIN CONTAINER -->
+      <div class="main-container">
 
-        <!-- TOP BAR -->
-        <app-top-bar [statusText]="statusPillText"></app-top-bar>
+        <!-- LEFT: NAV RAIL -->
+        <app-nav-rail [activePage]="activePage" (pageChange)="activePage = $event"></app-nav-rail>
 
         <div class="main-frame-body">
           <!-- STRESS BANNER -->
@@ -122,7 +122,7 @@ import { FooterStripComponent } from './components/footer-strip/footer-strip.com
           <app-footer-strip></app-footer-strip>
         </div>
 
-      </div><!-- /content-col -->
+      </div><!-- /main-container -->
 
       <!-- TOASTER -->
       <div class="toaster">
@@ -143,10 +143,10 @@ import { FooterStripComponent } from './components/footer-strip/footer-strip.com
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     button { font-family: inherit; cursor: pointer; }
 
-    /* ─── ROOT SHELL: side-by-side nav + content ─── */
+    /* ─── ROOT SHELL: top bar + main container underneath ─── */
     .app-shell {
       display: flex;
-      flex-direction: row;
+      flex-direction: column;
       height: 100vh;
       overflow: hidden;
       background: #0f0f0f;
@@ -155,10 +155,10 @@ import { FooterStripComponent } from './components/footer-strip/footer-strip.com
       font-size: 13px;
     }
 
-    /* ─── CONTENT COLUMN: topbar + strips + viewport + footer ─── */
-    .content-col {
+    /* ─── MAIN CONTAINER: left rail + main frame body ─── */
+    .main-container {
       display: flex;
-      flex-direction: column;
+      flex-direction: row;
       flex: 1;
       min-width: 0;
       overflow: hidden;

@@ -39,6 +39,11 @@ VictusDeck uses `ryzenadj.exe` to write power limits (Fast PPT, Slow PPT, and ST
 - **What Was Being Done Wrong**: Previous designs attempted to fight this limit or flagged it as an error when STAPM failed to align with custom targets.
 - **The Resolution**: On modern mobile processors (specifically Hawk Point), STAPM is BIOS-gated by HP firmware. Because Fast PPT and Slow PPT are fully adjustable and actually govern the real-world package power scaling, we kept the `--stapm-limit` parameter in our commands (which is safe) but added a `(BIOS-controlled)` annotation in the UI to prevent user confusion.
 
+### 2.5 Console/CMD Window Flashing in Production GUI Environment
+- **The Problem**: In development mode (running from terminal via `npm run tauri dev`), the app runs flawlessly. However, in the packaged release build (installed via MSI), every background poll (every 2 seconds) and every power setting change causes a rapid Command Prompt or PowerShell terminal window to flash/flicker onto the screen.
+- **What Was Being Done Wrong**: GUI applications on Windows run under the `#![windows_subsystem = "windows"]` mode, which has no attached console. When Rust's `std::process::Command` is spawned, Windows automatically launches a new console window to execute the target process (e.g. `ryzenadj.exe`, `powershell.exe`, or `net.exe`) unless explicitly told not to. In the development terminal, these share the terminal's console and remain hidden, but in a production GUI app they pop up visually.
+- **The Resolution**: We imported `std::os::windows::process::CommandExt` on Windows platforms and configured every `Command` spawn with the `CREATE_NO_WINDOW` flag (`0x08000000` or `.creation_flags(0x08000000)`). This forces Windows to execute all child processes completely silently in the background without creating a visible window, eliminating all flashing and flickering.
+
 ---
 
 ## 3. Power Limits Explained (Why One Slider?)

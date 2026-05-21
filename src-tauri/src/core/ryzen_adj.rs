@@ -3,6 +3,9 @@ use std::path::{Path, PathBuf};
 use serde_json::json;
 use std::sync::{Mutex, OnceLock};
 
+#[cfg(windows)]
+use std::os::windows::process::CommandExt;
+
 #[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
 pub struct RyzenAdjResponse {
     pub success: bool,
@@ -115,6 +118,9 @@ fn execute_ryzenadj_direct(exe: &Path, args: &[&str]) -> std::io::Result<std::pr
     cmd.stdout(out_file);
     cmd.stderr(err_file);
 
+    #[cfg(windows)]
+    cmd.creation_flags(0x08000000);
+
     let status = cmd.status()?;
 
     // Read the output from the temporary files
@@ -182,9 +188,12 @@ fn execute_ryzenadj_via_cmd(exe: &Path, args: &[&str]) -> std::io::Result<std::p
 fn run_ryzenadj(args: &[&str]) -> RyzenAdjResponse {
     let _lock = ryzenadj_mutex().lock().unwrap();
 
-    let is_admin = Command::new("net")
-        .arg("session")
-        .output()
+    let mut admin_cmd = Command::new("net");
+    admin_cmd.arg("session");
+    #[cfg(windows)]
+    admin_cmd.creation_flags(0x08000000);
+
+    let is_admin = admin_cmd.output()
         .map(|o| o.status.success())
         .unwrap_or(false);
     println!("[RyzenAdj] Process elevated (Administrator): {}", is_admin);

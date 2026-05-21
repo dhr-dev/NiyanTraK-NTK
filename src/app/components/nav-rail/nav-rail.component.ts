@@ -8,36 +8,6 @@ import { CommonModule } from '@angular/common';
   template: `
     <!-- ══ LEFT: FULL-HEIGHT NAV RAIL (anchored to window, not content) ══ -->
     <nav class="nav-rail">
-      <div class="brand-pill">
-        <svg class="brand-icon" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <defs>
-            <linearGradient id="hexGradTop" x1="0%" y1="0%" x2="100%" y2="100%">
-              <stop offset="0%" stop-color="#93c5fd" />
-              <stop offset="100%" stop-color="#3b82f6" />
-            </linearGradient>
-            <linearGradient id="hexGradLeft" x1="0%" y1="0%" x2="100%" y2="100%">
-              <stop offset="0%" stop-color="#60a5fa" />
-              <stop offset="100%" stop-color="#2563eb" />
-            </linearGradient>
-            <linearGradient id="hexGradRight" x1="0%" y1="0%" x2="100%" y2="100%">
-              <stop offset="0%" stop-color="#3b82f6" />
-              <stop offset="100%" stop-color="#1d4ed8" />
-            </linearGradient>
-            <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
-              <feGaussianBlur stdDeviation="2" result="blur" />
-              <feComposite in="SourceGraphic" in2="blur" operator="over" />
-            </filter>
-          </defs>
-          <path d="M50 33L50 51.6M34 61L50 51.6M66 61L50 51.6" stroke="#ffffff" stroke-width="2" opacity="0.3" stroke-linecap="round"/>
-          <polygon points="50,18 63,25.5 63,40.5 50,48 37,40.5 37,25.5" fill="url(#hexGradTop)" stroke="#1e293b" stroke-width="1.5" />
-          <circle cx="50" cy="33" r="3" fill="#ffffff" opacity="0.8" />
-          <polygon points="34,46 47,53.5 47,68.5 34,76 21,68.5 21,53.5" fill="url(#hexGradLeft)" stroke="#1e293b" stroke-width="1.5" />
-          <circle cx="34" cy="61" r="3" fill="#ffffff" opacity="0.8" />
-          <polygon points="66,46 79,53.5 79,68.5 66,76 53,68.5 53,53.5" fill="url(#hexGradRight)" stroke="#1e293b" stroke-width="1.5" />
-          <circle cx="66" cy="61" r="3" fill="#ffffff" opacity="0.8" />
-          <circle cx="50" cy="51.6" r="4.5" fill="#ffffff" filter="url(#glow)" />
-        </svg>
-      </div>
       <!-- Quick button -->
       <button class="nav-btn" [class.nav-btn--active]="activePage === 'quick'" (click)="setPage('quick')" title="Quick Control">
         <svg viewBox="0 0 24 24" fill="currentColor" width="20" height="20">
@@ -59,32 +29,15 @@ import { CommonModule } from '@angular/common';
     .nav-rail {
       width: 56px;
       min-width: 56px;
-      height: 100vh;
+      height: 100%;
       background: #0d0d0d;
       display: flex;
       flex-direction: column;
       align-items: center;
-      padding: 6px 0 12px 0;
+      padding: 16px 0 12px 0;
       gap: 6px;
       flex-shrink: 0;
       z-index: 10;
-    }
-    .brand-pill {
-      width: 44px;
-      height: 44px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      margin-bottom: 12px;
-    }
-    .brand-icon {
-      width: 34px;
-      height: 34px;
-      filter: drop-shadow(0 2px 8px rgba(37, 99, 235, 0.4));
-      transition: transform 300ms ease;
-    }
-    .brand-icon:hover {
-      transform: scale(1.1);
     }
     .nav-btn {
       width: 44px;
