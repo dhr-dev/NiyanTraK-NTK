@@ -6,10 +6,19 @@ export interface RyzenAdjResponse {
   message: string;
   data?: {
     stapm_limit?: number;
+    stapm_value?: number;
     fast_limit?: number;
+    fast_value?: number;
     slow_limit?: number;
-    tctl_temp?: number;
-    apu_skin_temp?: number;
+    slow_value?: number;
+    stapm_time?: number;
+    slow_time?: number;
+    tctl_limit?: number;
+    tctl_value?: number;
+    apu_skin_limit?: number;
+    apu_skin_value?: number;
+    dgpu_skin_limit?: number;
+    dgpu_skin_value?: number;
     stdout?: string;
     stderr?: string;
   };
@@ -34,9 +43,9 @@ export class RyzenService {
     }
   }
 
-  async setTdp(value: number): Promise<RyzenAdjResponse> {
+  async setTdp(value: number, tempLimit?: number): Promise<RyzenAdjResponse> {
     try {
-      const res = await invoke<RyzenAdjResponse>('set_cpu_tdp', { value });
+      const res = await invoke<RyzenAdjResponse>('set_cpu_tdp', { value, tempLimit });
       console.log('[RyzenService] setTdp response:', res);
       return res;
     } catch (err) {
@@ -45,6 +54,24 @@ export class RyzenService {
         success: false,
         message: String(err)
       };
+    }
+  }
+
+  async saveCustomPresets(presets: string): Promise<string> {
+    try {
+      return await invoke<string>('save_custom_presets', { presets });
+    } catch (err) {
+      console.error('[RyzenService] Failed to save presets:', err);
+      throw err;
+    }
+  }
+
+  async loadCustomPresets(): Promise<string> {
+    try {
+      return await invoke<string>('load_custom_presets');
+    } catch (err) {
+      console.error('[RyzenService] Failed to load presets:', err);
+      throw err;
     }
   }
 

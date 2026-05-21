@@ -64,11 +64,18 @@ Profiles are predefined system configurations designed for specific power and ac
 - **Execution Mode**: Non-blocking `async fn` commands executed on Tauri’s Tokio worker thread pool to prevent blocking the UI event loop.
 - **Privileged Access Handling**: Since RyzenAdj modifies low-level hardware control tables, it requires elevated Administrator/root permissions. If lacking privileges, the backend command catches execution and permission failures (`os_access` errors) gracefully and passes structured error packets back to the frontend instead of causing a panic or application crash.
 - **Real-Time Polling**: The frontend triggers a background scheduler to poll CPU diagnostics (`get_cpu_status`) every 2 seconds, parsing human-readable table outputs dynamically into active values (`STAPM Limit`, `Fast PPT Limit`, `Slow PPT Limit`, `Temp Throttle Limit`).
+- **Telemetry Expansion**:
+  - **Sustained & Burst Power (PPT)**: Merges Fast PPT and Slow PPT wattage telemetry. Displays real-time consumption values alongside target limits, and reads out active Slow Time constant values (Slow Time cooling constants).
+  - **Sustained Power (STAPM)**: Renders live sustained power usage alongside configured BIOS limits and STAPM Time constant cooling boundaries.
+  - **Sensors & Thermals**: Monitors and plots CPU Core Temperature (`THM VALUE CORE`), APU Skin Temperature (`STT VALUE APU`), and dGPU Skin Temperature (`STT VALUE dGPU`), together with their safety throttle limits.
+  - **Peak Tracking**: Tracks actual real-time peak values of active wattage consumption and core temperatures dynamically inside Angular.
+- **Dynamic Safety Temperature Targets**:
+  - Enables user-customizable thermal throttling boundaries ranging from `50°C` to `95°C` setting via the `--tctl-temp` argument.
 - **Standard Presets**:
   - `Silent` $\rightarrow$ 15W TDP / 70°C throttle
   - `Bed Mode` $\rightarrow$ 35W TDP / 80°C throttle
   - `Performance` $\rightarrow$ 55W TDP / 90°C throttle
-  - `Custom` $\rightarrow$ 8W to 55W customized slider
+  - `Custom` $\rightarrow$ 8W to 55W customized slider and custom safety thermal limit slider
 
 ### 3.3 CPU Stress Test Subsystem
 - **Execution Module**: `src-tauri/src/core/stress.rs`
@@ -76,7 +83,31 @@ Profiles are predefined system configurations designed for specific power and ac
 - **Core Workload**: Executes synthetic math loops (`sqrt().sin().cos()`) utilizing both FPU and ALU execution pipelines to guarantee full, 100% CPU thread saturation.
 - **Yielding Safety Design**: To prevent kernel scheduling blockages and interface freezes, each thread cooperatively invokes `thread::yield_now()`. This ensures the Tauri main thread and Windows window manager maintain high responsiveness while maximum thermal/wattage load is placed on the hardware registers.
 - **Safety Termination**: If active, the stress test is automatically stopped upon the destruction or shutdown of the Tauri frontend application window, preventing background processor drain.
-- **Dynamic Island Overlay**: Designed as a floating top-center capsule (`.dynamic-island-container`) that expands with a spring transition animation when the stress test is active. It is styled with `position: fixed;` to ensure it remains sticky and fully visible at the top of the viewport even while scrolling.
+
+### 3.4 Persistent Custom Profile Presets
+- **State Persistence**: Presets are loaded from and saved to a physical JSON file `custom_presets.json` in the workspace root instead of browser `localStorage`.
+- **Tauri IPC Endpoints**: Invokes `load_custom_presets` and `save_custom_presets` Tauri commands for secure disk read/write access.
+- **Preset Object Layout**:
+  ```json
+  [
+    {
+      "name": "custom_1716301234567",
+      "powerLimit": 45,
+      "fan": "manual",
+      "fanLevel": 34,
+      "fanLabel": "5200 RPM",
+      "label": "Gaming Balanced",
+      "isCustom": true,
+      "tempLimit": 85
+    }
+  ]
+  ```
+- **In-Place Overwrites**: Entering an existing preset label updates its parameters in place rather than appending duplicate profiles.
+
+### 3.5 Dynamic Island Header Toast Center
+- **Capsule Shell Layout**: Replaces standard bottom-fixed toasts with a premium, Apple-like "Dynamic Island" morphing capsule in the horizontal center of the Top Bar.
+- **Idle State**: Displays the active performance profile (e.g. `⚡ PERFORMANCE` or `⚡ BED MODE`) with a subtle glowing border.
+- **Morphing State**: Upon alert emission, spring-expands smoothly using CSS scale and size transitions, rendering success/error icons and alert messages. Reverts automatically back to the idle active profile capsule after 4.5 seconds.
 
 ---
 

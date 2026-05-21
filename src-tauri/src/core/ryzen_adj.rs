@@ -312,19 +312,25 @@ pub fn set_silent_mode() -> RyzenAdjResponse {
     ])
 }
 
-pub fn set_custom_limits(mut tdp_watts: u32) -> RyzenAdjResponse {
+pub fn set_custom_limits(mut tdp_watts: u32, mut temp_limit: u32) -> RyzenAdjResponse {
     if tdp_watts < 8 {
         tdp_watts = 8;
     } else if tdp_watts > 55 {
         tdp_watts = 55;
     }
+    if temp_limit < 50 {
+        temp_limit = 50;
+    } else if temp_limit > 95 {
+        temp_limit = 95;
+    }
     let tdp_mw = tdp_watts * 1000;
     let tdp_str = tdp_mw.to_string();
+    let temp_str = temp_limit.to_string();
     run_ryzenadj(&[
         &format!("--stapm-limit={}", tdp_str),
         &format!("--fast-limit={}", tdp_str),
         &format!("--slow-limit={}", tdp_str),
-        "--tctl-temp=90",
+        &format!("--tctl-temp={}", temp_str),
         "--apu-skin-temp=56",
     ])
 }
@@ -365,33 +371,50 @@ pub fn get_cpu_status() -> RyzenAdjResponse {
 
             // Parse stdout lines
             let mut stapm_limit = 0.0;
+            let mut stapm_value = 0.0;
             let mut fast_limit = 0.0;
+            let mut fast_value = 0.0;
             let mut slow_limit = 0.0;
-            let mut tctl_temp = 0.0;
-            let mut apu_skin_temp = 0.0;
+            let mut slow_value = 0.0;
+            let mut stapm_time = 0.0;
+            let mut slow_time = 0.0;
+            let mut tctl_limit = 0.0;
+            let mut tctl_value = 0.0;
+            let mut apu_skin_limit = 0.0;
+            let mut apu_skin_value = 0.0;
+            let mut dgpu_skin_limit = 0.0;
+            let mut dgpu_skin_value = 0.0;
 
             for line in stdout.lines() {
                 let lower = line.to_lowercase();
-                if lower.contains("stapm limit") || lower.contains("stapm-limit") {
-                    if let Some(val) = parse_line_value(line) {
-                        stapm_limit = val;
-                    }
-                } else if lower.contains("fast ppt limit") || lower.contains("fast ppt") || lower.contains("fast-limit") {
-                    if let Some(val) = parse_line_value(line) {
-                        fast_limit = val;
-                    }
-                } else if lower.contains("slow ppt limit") || lower.contains("slow ppt") || lower.contains("slow-limit") {
-                    if let Some(val) = parse_line_value(line) {
-                        slow_limit = val;
-                    }
-                } else if lower.contains("tctl temp") || lower.contains("tctl-temp") {
-                    if let Some(val) = parse_line_value(line) {
-                        tctl_temp = val;
-                    }
-                } else if lower.contains("apu skin temp") || lower.contains("apu-skin-temp") {
-                    if let Some(val) = parse_line_value(line) {
-                        apu_skin_temp = val;
-                    }
+                if lower.contains("stapm limit") {
+                    if let Some(val) = parse_line_value(line) { stapm_limit = val; }
+                } else if lower.contains("stapm value") {
+                    if let Some(val) = parse_line_value(line) { stapm_value = val; }
+                } else if lower.contains("ppt limit fast") {
+                    if let Some(val) = parse_line_value(line) { fast_limit = val; }
+                } else if lower.contains("ppt value fast") {
+                    if let Some(val) = parse_line_value(line) { fast_value = val; }
+                } else if lower.contains("ppt limit slow") {
+                    if let Some(val) = parse_line_value(line) { slow_limit = val; }
+                } else if lower.contains("ppt value slow") {
+                    if let Some(val) = parse_line_value(line) { slow_value = val; }
+                } else if lower.contains("stapmtimeconst") {
+                    if let Some(val) = parse_line_value(line) { stapm_time = val; }
+                } else if lower.contains("slowppttimeconst") {
+                    if let Some(val) = parse_line_value(line) { slow_time = val; }
+                } else if lower.contains("thm limit core") {
+                    if let Some(val) = parse_line_value(line) { tctl_limit = val; }
+                } else if lower.contains("thm value core") {
+                    if let Some(val) = parse_line_value(line) { tctl_value = val; }
+                } else if lower.contains("stt limit apu") {
+                    if let Some(val) = parse_line_value(line) { apu_skin_limit = val; }
+                } else if lower.contains("stt value apu") {
+                    if let Some(val) = parse_line_value(line) { apu_skin_value = val; }
+                } else if lower.contains("stt limit dgpu") {
+                    if let Some(val) = parse_line_value(line) { dgpu_skin_limit = val; }
+                } else if lower.contains("stt value dgpu") {
+                    if let Some(val) = parse_line_value(line) { dgpu_skin_value = val; }
                 }
             }
 
@@ -400,10 +423,19 @@ pub fn get_cpu_status() -> RyzenAdjResponse {
                 message: "CPU limits retrieved successfully.".to_string(),
                 data: Some(json!({
                     "stapm_limit": stapm_limit,
+                    "stapm_value": stapm_value,
                     "fast_limit": fast_limit,
+                    "fast_value": fast_value,
                     "slow_limit": slow_limit,
-                    "tctl_temp": tctl_temp,
-                    "apu_skin_temp": apu_skin_temp,
+                    "slow_value": slow_value,
+                    "stapm_time": stapm_time,
+                    "slow_time": slow_time,
+                    "tctl_limit": tctl_limit,
+                    "tctl_value": tctl_value,
+                    "apu_skin_limit": apu_skin_limit,
+                    "apu_skin_value": apu_skin_value,
+                    "dgpu_skin_limit": dgpu_skin_limit,
+                    "dgpu_skin_value": dgpu_skin_value,
                 })),
             }
         }

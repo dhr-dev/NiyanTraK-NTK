@@ -7,72 +7,129 @@ import { CommonModule } from '@angular/common';
   imports: [CommonModule],
   template: `
     <div class="monitor-strip">
-      <!-- FAST PPT -->
-      <div class="monitor-seg">
-        <div class="monitor-row">
-          <span class="monitor-label">FAST PPT</span>
-          <span class="monitor-peak"
-            *ngIf="peakFast > 0"
-            [style.color]="metricColor(peakFast, metrics.fastPptLimit)"
-          >↑ {{ peakFast }}W</span>
+      <!-- COLUMN 1: CPU PACKAGE POWER (PPT) -->
+      <div class="monitor-seg font-sans">
+        <div class="monitor-header">
+          <span class="monitor-label">Package Power (PPT)</span>
+          <span class="monitor-sub-info" *ngIf="metrics.slowTime > 0">Cooling Constant: {{ metrics.slowTime.toFixed(1) }}s</span>
         </div>
-        <div class="monitor-value">{{ metrics.fastPpt }}W</div>
-        <div class="monitor-bar-track">
-          <div class="monitor-bar-fill"
-            [style.width]="metricPct(metrics.fastPpt, metrics.fastPptLimit) + '%'"
-            [style.background]="metricColor(metrics.fastPpt, metrics.fastPptLimit)">
+        
+        <!-- FAST PPT SUBROW -->
+        <div class="monitor-subrow">
+          <div class="monitor-row">
+            <span class="subrow-title">FAST PPT</span>
+            <div class="monitor-metrics-display">
+              <span class="monitor-peak" *ngIf="peakFast > 0" [style.color]="metricColor(peakFast, metrics.fastPptLimit)">↑ {{ peakFast }}W</span>
+              <span class="monitor-value-main">{{ metrics.fastPpt.toFixed(1) }}W <span class="limit-val">/ {{ metrics.fastPptLimit }}W</span></span>
+            </div>
+          </div>
+          <div class="monitor-bar-track">
+            <div class="monitor-bar-fill"
+              [style.width]="metricPct(metrics.fastPpt, metrics.fastPptLimit) + '%'"
+              [style.background]="metricColor(metrics.fastPpt, metrics.fastPptLimit)">
+            </div>
+          </div>
+        </div>
+
+        <!-- SLOW PPT SUBROW -->
+        <div class="monitor-subrow">
+          <div class="monitor-row">
+            <span class="subrow-title">SLOW PPT</span>
+            <div class="monitor-metrics-display">
+              <span class="monitor-peak" *ngIf="peakSlow > 0" [style.color]="metricColor(peakSlow, metrics.slowPptLimit)">↑ {{ peakSlow }}W</span>
+              <span class="monitor-value-main">{{ metrics.slowPpt.toFixed(1) }}W <span class="limit-val">/ {{ metrics.slowPptLimit }}W</span></span>
+            </div>
+          </div>
+          <div class="monitor-bar-track">
+            <div class="monitor-bar-fill"
+              [style.width]="metricPct(metrics.slowPpt, metrics.slowPptLimit) + '%'"
+              [style.background]="metricColor(metrics.slowPpt, metrics.slowPptLimit)">
+            </div>
           </div>
         </div>
       </div>
-      <div class="monitor-divider"></div>
-      
-      <!-- SLOW PPT -->
-      <div class="monitor-seg">
-        <div class="monitor-row">
-          <span class="monitor-label">SLOW PPT</span>
-          <span class="monitor-peak"
-            *ngIf="peakSlow > 0"
-            [style.color]="metricColor(peakSlow, metrics.slowPptLimit)"
-          >↑ {{ peakSlow }}W</span>
+
+      <!-- COLUMN 2: SUSTAINED POWER (STAPM) -->
+      <div class="monitor-seg font-sans">
+        <div class="monitor-header">
+          <span class="monitor-label">Sustained Power (STAPM)</span>
+          <span class="monitor-sub-info" *ngIf="metrics.stapmTime > 0">Cooling Constant: {{ metrics.stapmTime.toFixed(1) }}s</span>
         </div>
-        <div class="monitor-value">{{ metrics.slowPpt }}W</div>
-        <div class="monitor-bar-track">
-          <div class="monitor-bar-fill"
-            [style.width]="metricPct(metrics.slowPpt, metrics.slowPptLimit) + '%'"
-            [style.background]="metricColor(metrics.slowPpt, metrics.slowPptLimit)">
+        
+        <div class="monitor-subrow-centered">
+          <div class="monitor-row">
+            <span class="subrow-title">STAPM VALUE</span>
+            <div class="monitor-metrics-display">
+              <span class="monitor-value-main">{{ metrics.stapm.toFixed(1) }}W <span class="limit-val">/ {{ metrics.stapmLimit }}W</span></span>
+            </div>
+          </div>
+          <div class="monitor-bar-track">
+            <div class="monitor-bar-fill"
+              [style.width]="metricPct(metrics.stapm, metrics.stapmLimit) + '%'"
+              [style.background]="metricColor(metrics.stapm, metrics.stapmLimit)">
+            </div>
+          </div>
+        </div>
+        
+        <div class="monitor-bios-badge">BIOS-controlled sustained tracking</div>
+      </div>
+
+      <!-- COLUMN 3: THERMALS & SKIN SENSORS -->
+      <div class="monitor-seg font-sans">
+        <div class="monitor-header">
+          <span class="monitor-label">Thermals & Skin Sensors</span>
+        </div>
+
+        <!-- CORE TEMP -->
+        <div class="monitor-subrow-mini">
+          <div class="monitor-row">
+            <span class="subrow-title">CPU CORE</span>
+            <div class="monitor-metrics-display">
+              <span class="monitor-peak" *ngIf="peakTemp > 0" [style.color]="metricColor(peakTemp, metrics.tempLimit)">↑ {{ peakTemp }}°C</span>
+              <span class="monitor-value-main">{{ metrics.temp.toFixed(1) }}°C <span class="limit-val">/ {{ metrics.tempLimit }}°C</span></span>
+            </div>
+          </div>
+          <div class="monitor-bar-track">
+            <div class="monitor-bar-fill"
+              [style.width]="metricPct(metrics.temp, metrics.tempLimit) + '%'"
+              [style.background]="metricColor(metrics.temp, metrics.tempLimit)">
+            </div>
+          </div>
+        </div>
+
+        <!-- APU SKIN TEMP -->
+        <div class="monitor-subrow-mini">
+          <div class="monitor-row">
+            <span class="subrow-title">APU SKIN</span>
+            <div class="monitor-metrics-display">
+              <span class="monitor-value-main">{{ metrics.apuSkin.toFixed(1) }}°C <span class="limit-val">/ {{ metrics.apuSkinLimit }}°C</span></span>
+            </div>
+          </div>
+          <div class="monitor-bar-track">
+            <div class="monitor-bar-fill"
+              [style.width]="metricPct(metrics.apuSkin, metrics.apuSkinLimit) + '%'"
+              [style.background]="metricColor(metrics.apuSkin, metrics.apuSkinLimit)">
+            </div>
+          </div>
+        </div>
+
+        <!-- dGPU SKIN TEMP -->
+        <div class="monitor-subrow-mini" *ngIf="metrics.dgpuSkin > 0">
+          <div class="monitor-row">
+            <span class="subrow-title">dGPU SKIN</span>
+            <div class="monitor-metrics-display">
+              <span class="monitor-value-main">{{ metrics.dgpuSkin.toFixed(1) }}°C <span class="limit-val">/ {{ metrics.dgpuSkinLimit }}°C</span></span>
+            </div>
+          </div>
+          <div class="monitor-bar-track">
+            <div class="monitor-bar-fill"
+              [style.width]="metricPct(metrics.dgpuSkin, metrics.dgpuSkinLimit) + '%'"
+              [style.background]="metricColor(metrics.dgpuSkin, metrics.dgpuSkinLimit)">
+            </div>
           </div>
         </div>
       </div>
-      <div class="monitor-divider"></div>
-      
-      <!-- TEMP -->
-      <div class="monitor-seg">
-        <div class="monitor-row">
-          <span class="monitor-label">TEMP</span>
-          <span class="monitor-peak"
-            *ngIf="peakTemp > 0"
-            [style.color]="metricColor(peakTemp, metrics.tempLimit)"
-          >↑ {{ peakTemp }}°C</span>
-        </div>
-        <div class="monitor-value">{{ metrics.temp }}°C</div>
-        <div class="monitor-bar-track">
-          <div class="monitor-bar-fill"
-            [style.width]="metricPct(metrics.temp, metrics.tempLimit) + '%'"
-            [style.background]="metricColor(metrics.temp, metrics.tempLimit)">
-          </div>
-        </div>
-      </div>
-      <div class="monitor-divider"></div>
-      
-      <!-- STAPM -->
-      <div class="monitor-seg">
-        <div class="monitor-row">
-          <span class="monitor-label">STAPM</span>
-          <span class="monitor-bios">(BIOS)</span>
-        </div>
-        <div class="monitor-value">{{ metrics.stapm }}W</div>
-        <div class="monitor-bios-sub">BIOS-ctrl</div>
-      </div>
+
       <!-- RESET PEAKS -->
       <button class="peak-reset-btn" (click)="reset.emit()" title="Reset peak values">↺</button>
     </div>
@@ -94,24 +151,34 @@ import { CommonModule } from '@angular/common';
     .monitor-seg {
       display: flex;
       flex-direction: column;
-      justify-content: center;
-      padding: 10px 18px;
+      padding: 12px 18px;
       flex: 1;
-      gap: 3px;
+      gap: 10px;
       background: #171717;
       border: 1px solid #242424;
       border-radius: 12px;
     }
-    .monitor-seg:not(:last-child) { border-right: none; }
+    .monitor-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid #222;
+      padding-bottom: 6px;
+    }
+    .monitor-label { font-size: 10px; font-weight: 600; color: #555; text-transform: uppercase; letter-spacing: 0.06em; }
+    .monitor-sub-info { font-size: 9px; color: #444; font-variant-numeric: tabular-nums; }
+    .monitor-subrow { display: flex; flex-direction: column; gap: 4px; }
+    .monitor-subrow-centered { display: flex; flex-direction: column; gap: 4px; margin-top: auto; margin-bottom: auto; }
+    .monitor-subrow-mini { display: flex; flex-direction: column; gap: 3px; }
     .monitor-row { display: flex; align-items: center; justify-content: space-between; }
-    .monitor-label { font-size: 10px; font-weight: 500; color: #555; text-transform: uppercase; letter-spacing: 0.06em; }
-    .monitor-peak { font-size: 11px; font-weight: 600; font-variant-numeric: tabular-nums; }
-    .monitor-value { font-size: 16px; font-weight: 500; color: #e0e0e0; line-height: 1; }
-    .monitor-bar-track { width: 80px; height: 4px; background: #2a2a2a; border-radius: 9999px; overflow: hidden; }
+    .subrow-title { font-size: 9px; font-weight: 500; color: #555; letter-spacing: 0.05em; }
+    .monitor-metrics-display { display: flex; align-items: center; gap: 8px; }
+    .monitor-peak { font-size: 9px; font-weight: 600; font-variant-numeric: tabular-nums; }
+    .monitor-value-main { font-size: 14px; font-weight: 500; color: #e0e0e0; font-variant-numeric: tabular-nums; }
+    .limit-val { font-size: 10px; color: #444; font-weight: 400; }
+    .monitor-bar-track { width: 100%; height: 3px; background: #2a2a2a; border-radius: 9999px; overflow: hidden; }
     .monitor-bar-fill { height: 100%; border-radius: 9999px; transition: width 600ms ease, background 300ms ease; }
-    .monitor-bios { font-size: 9px; color: #3a3a3a; }
-    .monitor-bios-sub { font-size: 9px; color: #383838; font-style: italic; }
-    .monitor-divider { display: none; }
+    .monitor-bios-badge { font-size: 9px; color: #3a3a3a; font-style: italic; border-top: 1px solid #222; padding-top: 6px; }
     .peak-reset-btn {
       position: absolute;
       right: 70px;
@@ -138,9 +205,16 @@ export class MonitorStripComponent {
     fastPptLimit: 55,
     slowPpt: 0,
     slowPptLimit: 55,
+    slowTime: 0,
+    stapm: 0,
+    stapmLimit: 45,
+    stapmTime: 0,
     temp: 0,
     tempLimit: 90,
-    stapm: 0
+    apuSkin: 0,
+    apuSkinLimit: 56,
+    dgpuSkin: 0,
+    dgpuSkinLimit: 37.5
   };
   @Input() peakFast: number = 0;
   @Input() peakSlow: number = 0;

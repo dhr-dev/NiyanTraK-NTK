@@ -37,7 +37,11 @@ import { FooterStripComponent } from './components/footer-strip/footer-strip.com
     <div class="app-shell">
 
       <!-- TOP BAR -->
-      <app-top-bar [statusText]="statusPillText"></app-top-bar>
+      <app-top-bar 
+        [statusText]="statusPillText"
+        [activeProfileLabel]="activeProfileLabel"
+        [activeToast]="activeToast"
+      ></app-top-bar>
 
       <!-- MAIN CONTAINER -->
       <div class="main-container">
@@ -69,6 +73,7 @@ import { FooterStripComponent } from './components/footer-strip/footer-strip.com
             [currentProfile]="profileName"
             [profiles]="profiles"
             (selectProfile)="onSelectProfile($event)"
+            (savePreset)="saveCustomPreset()"
           ></app-profiles-drawer>
 
           <!-- BEZEL RIBBONS: Profiles + Stress on right edge -->
@@ -99,6 +104,8 @@ import { FooterStripComponent } from './components/footer-strip/footer-strip.com
                   [mode]="cpuMode"
                   [tdp]="cpuTdp"
                   (tdpChange)="cpuTdp = $event"
+                  [tempLimit]="cpuTempLimit"
+                  (tempLimitChange)="cpuTempLimit = $event"
                   (apply)="applyCustomTdp()"
                 ></app-cpu-power-panel>
               </aside>
@@ -123,18 +130,6 @@ import { FooterStripComponent } from './components/footer-strip/footer-strip.com
         </div>
 
       </div><!-- /main-container -->
-
-      <!-- TOASTER -->
-      <div class="toaster">
-        <div *ngFor="let toast of toasts" class="toast" [ngClass]="'toast--' + toast.type">
-          <span class="toast-icon">
-            <ng-container *ngIf="toast.type === 'success'">✓</ng-container>
-            <ng-container *ngIf="toast.type === 'error'">⚠</ng-container>
-            <ng-container *ngIf="toast.type === 'info'">ℹ</ng-container>
-          </span>
-          <span class="toast-msg">{{ toast.message }}</span>
-        </div>
-      </div>
 
     </div>
   `,
@@ -237,7 +232,7 @@ export class AppComponent implements OnInit, OnDestroy {
 
   // Navigation
   activePage: 'quick' | 'stress' = 'quick';
-  profilesOpen = false;
+  profilesOpen = true;
 
   // Fan state
   fanLevel = 30;
@@ -249,6 +244,7 @@ export class AppComponent implements OnInit, OnDestroy {
 
   // CPU state
   cpuTdp = 35;
+  cpuTempLimit = 90;
   cpuMode: 'performance' | 'balanced' | 'silent' | 'custom' | 'bed' = 'bed';
   cpuLimits: any = null;
   cpuErrorMsg = '';
@@ -269,6 +265,7 @@ export class AppComponent implements OnInit, OnDestroy {
 
   // Toast
   toasts: { message: string; type: 'success' | 'error' | 'info'; id: number }[] = [];
+  activeToast: any = null;
   private toastIdCounter = 0;
   private pollInterval: any;
 
@@ -282,7 +279,7 @@ export class AppComponent implements OnInit, OnDestroy {
   readonly intensityPresets = ['Light', 'Medium', 'Heavy', 'Maximum'];
   readonly threadCores = [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16];
 
-  profiles = [
+  profiles: any[] = [
     { name: 'battery',     powerLimit: 12, fan: 'silent',   fanLevel: 8,  fanLabel: 'Silent',  label: 'Battery Saver'   },
     { name: 'laptop',      powerLimit: 25, fan: 'balanced',  fanLevel: 30, fanLabel: 'Quiet',   label: 'Bed Mode'        },
     { name: 'table',       powerLimit: 35, fan: 'medium',    fanLevel: 30, fanLabel: 'Med',     label: 'Table Mode'      },
@@ -293,21 +290,36 @@ export class AppComponent implements OnInit, OnDestroy {
   // ── Getters ──
 
   get monitorMetrics() {
+    const limits = this.cpuLimits;
     return {
-      fastPpt:      this.cpuLimits?.fast_limit  ?? 0,
-      fastPptLimit: 55,
-      slowPpt:      this.cpuLimits?.slow_limit  ?? 0,
-      slowPptLimit: 55,
-      temp:         this.cpuLimits?.tctl_temp   ?? 0,
-      tempLimit:    90,
-      stapm:        this.cpuLimits?.stapm_limit ?? 0
+      fastPpt:      limits?.fast_value ?? 0,
+      fastPptLimit: limits?.fast_limit ?? 0,
+      slowPpt:      limits?.slow_value ?? 0,
+      slowPptLimit: limits?.slow_limit ?? 0,
+      slowTime:     limits?.slow_time ?? 0,
+      temp:         limits?.tctl_value ?? 0,
+      tempLimit:    limits?.tctl_limit ?? 0,
+      stapm:        limits?.stapm_value ?? 0,
+      stapmLimit:   limits?.stapm_limit ?? 0,
+      stapmTime:    limits?.stapm_time ?? 0,
+      apuSkin:      limits?.apu_skin_value ?? 0,
+      apuSkinLimit: limits?.apu_skin_limit ?? 0,
+      dgpuSkin:     limits?.dgpu_skin_value ?? 0,
+      dgpuSkinLimit: limits?.dgpu_skin_limit ?? 0
     };
   }
 
   get statusPillText(): string {
     const label = this.cpuMode === 'bed' ? 'Bed Mode' : this.cpuMode.toUpperCase();
-    const temp = this.cpuLimits?.tctl_temp ? `${Math.round(this.cpuLimits.tctl_temp)}°C` : '--°C';
+    const temp = this.cpuLimits?.tctl_value ? `${Math.round(this.cpuLimits.tctl_value)}°C` : '--°C';
     return `${label} · ${this.cpuTdp}W · ${temp}`;
+  }
+
+  get activeProfileLabel(): string {
+    const p = this.profiles.find(item => item.name === this.profileName);
+    if (p) return p.label;
+    if (this.profileName === 'custom') return 'Custom';
+    return 'Manual';
   }
 
   get stressPercent(): number {
@@ -354,9 +366,10 @@ export class AppComponent implements OnInit, OnDestroy {
 
   // ── Lifecycle ──
 
-  ngOnInit() {
+  async ngOnInit() {
     this.startCpuStatusPolling();
     this.checkStressStatus();
+    await this.loadPresets();
   }
 
   ngOnDestroy() {
@@ -369,8 +382,15 @@ export class AppComponent implements OnInit, OnDestroy {
 
   showToast(message: string, type: 'success' | 'error' | 'info' = 'success') {
     const id = this.toastIdCounter++;
-    this.toasts.push({ message, type, id });
-    setTimeout(() => { this.toasts = this.toasts.filter(t => t.id !== id); }, 4500);
+    const toast = { message, type, id };
+    this.toasts.push(toast);
+    this.activeToast = toast;
+    setTimeout(() => {
+      this.toasts = this.toasts.filter(t => t.id !== id);
+      if (this.activeToast?.id === id) {
+        this.activeToast = null;
+      }
+    }, 4500);
   }
 
   // ── CPU polling ──
@@ -385,11 +405,23 @@ export class AppComponent implements OnInit, OnDestroy {
     if (res.success && res.data) {
       this.cpuLimits = res.data;
       this.cpuErrorMsg = '';
-      // Update peak values
-      if ((this.cpuLimits.fast_limit  ?? 0) > this.peakFastPpt) this.peakFastPpt = Math.round(this.cpuLimits.fast_limit);
-      if ((this.cpuLimits.slow_limit  ?? 0) > this.peakSlowPpt) this.peakSlowPpt = Math.round(this.cpuLimits.slow_limit);
-      if ((this.cpuLimits.tctl_temp   ?? 0) > this.peakTemp)    this.peakTemp    = Math.round(this.cpuLimits.tctl_temp);
-      if ((this.cpuLimits.stapm_limit ?? 0) > this.peakStapm)   this.peakStapm   = Math.round(this.cpuLimits.stapm_limit);
+      // Update peak values from real-time sensors with explicit null guards
+      if (this.cpuLimits.fast_value !== undefined && this.cpuLimits.fast_value !== null && this.cpuLimits.fast_value > this.peakFastPpt) {
+        this.peakFastPpt = Math.round(this.cpuLimits.fast_value);
+      }
+      if (this.cpuLimits.slow_value !== undefined && this.cpuLimits.slow_value !== null && this.cpuLimits.slow_value > this.peakSlowPpt) {
+        this.peakSlowPpt = Math.round(this.cpuLimits.slow_value);
+      }
+      if (this.cpuLimits.tctl_value !== undefined && this.cpuLimits.tctl_value !== null && this.cpuLimits.tctl_value > this.peakTemp) {
+        this.peakTemp = Math.round(this.cpuLimits.tctl_value);
+      }
+      if (this.cpuLimits.stapm_value !== undefined && this.cpuLimits.stapm_value !== null && this.cpuLimits.stapm_value > this.peakStapm) {
+        this.peakStapm = Math.round(this.cpuLimits.stapm_value);
+      }
+      // Sync tempLimit from active core throttle target
+      if (this.cpuLimits.tctl_limit !== undefined && this.cpuLimits.tctl_limit !== null) {
+        this.cpuTempLimit = Math.round(this.cpuLimits.tctl_limit);
+      }
     } else {
       this.cpuLimits = null;
       this.cpuErrorMsg = res.message || 'RyzenAdj requires Administrator privileges.';
@@ -417,12 +449,14 @@ export class AppComponent implements OnInit, OnDestroy {
     this.cpuMode = 'custom';
     if (this.cpuTdp < 8)  this.cpuTdp = 8;
     if (this.cpuTdp > 55) this.cpuTdp = 55;
-    const res = await this.ryzenService.setTdp(this.cpuTdp);
+    if (this.cpuTempLimit < 50) this.cpuTempLimit = 50;
+    if (this.cpuTempLimit > 95) this.cpuTempLimit = 95;
+    const res = await this.ryzenService.setTdp(this.cpuTdp, this.cpuTempLimit);
     if (res.success) {
-      this.showToast(`TDP limit set to ${this.cpuTdp}W`, 'success');
+      this.showToast(`Limits set: TDP ${this.cpuTdp}W · Temp ${this.cpuTempLimit}°C`, 'success');
       this.pollCpuStatus();
     } else {
-      this.showToast(res.message || 'Failed to set TDP.', 'error');
+      this.showToast(res.message || 'Failed to set limits.', 'error');
     }
   }
 
@@ -486,21 +520,111 @@ export class AppComponent implements OnInit, OnDestroy {
     }
   }
 
+  async loadPresets() {
+    try {
+      const dataStr = await this.ryzenService.loadCustomPresets();
+      const custom = JSON.parse(dataStr || '[]');
+      this.profiles = [
+        { name: 'battery',     powerLimit: 12, fan: 'silent',   fanLevel: 8,  fanLabel: 'Silent',  label: 'Battery Saver'   },
+        { name: 'laptop',      powerLimit: 25, fan: 'balanced',  fanLevel: 30, fanLabel: 'Quiet',   label: 'Bed Mode'        },
+        { name: 'table',       powerLimit: 35, fan: 'medium',    fanLevel: 30, fanLabel: 'Med',     label: 'Table Mode'      },
+        { name: 'performance', powerLimit: 45, fan: 'high',      fanLevel: 34, fanLabel: 'High',    label: 'Performance'     },
+        { name: 'extreme',     powerLimit: 55, fan: 'max',       fanLevel: 39, fanLabel: 'Max',     label: 'Extreme'         }
+      ];
+      if (Array.isArray(custom)) {
+        for (const p of custom) {
+          this.profiles.push(p);
+        }
+      }
+    } catch (err) {
+      console.error('Failed to load custom presets', err);
+    }
+  }
+
+  async saveCustomPreset() {
+    let defaultName = '';
+    const currentP = this.profiles.find(p => p.name === this.profileName);
+    if (currentP && currentP.isCustom) {
+      defaultName = currentP.label;
+    }
+    const name = prompt('Enter a name for the custom profile preset:', defaultName);
+    if (!name) return;
+    const trimmed = name.trim();
+    if (!trimmed) return;
+
+    const existingIndex = this.profiles.findIndex(p => p.label.toLowerCase() === trimmed.toLowerCase() && p.isCustom);
+    
+    let presetObj: any;
+    if (existingIndex !== -1) {
+      presetObj = this.profiles[existingIndex];
+      presetObj.powerLimit = this.cpuTdp;
+      presetObj.fanLevel = this.fanLevel;
+      presetObj.fanLabel = `${this.getRpm(this.fanLevel)} RPM`;
+      presetObj.tempLimit = this.cpuTempLimit;
+    } else {
+      const id = 'custom_' + Date.now();
+      presetObj = {
+        name: id,
+        powerLimit: this.cpuTdp,
+        fan: 'manual',
+        fanLevel: this.fanLevel,
+        fanLabel: `${this.getRpm(this.fanLevel)} RPM`,
+        label: trimmed,
+        isCustom: true,
+        tempLimit: this.cpuTempLimit
+      };
+      this.profiles.push(presetObj);
+    }
+
+    const customOnly = this.profiles.filter(p => p.isCustom);
+    try {
+      await this.ryzenService.saveCustomPresets(JSON.stringify(customOnly));
+      this.showToast(`Preset '${trimmed}' saved successfully!`, 'success');
+      this.profileName = presetObj.name;
+    } catch (err) {
+      this.showToast(`Failed to save preset: ${err}`, 'error');
+    }
+  }
+
   async onSelectProfile(profileName: string) {
     if (profileName === 'custom') {
       this.profileName = 'custom';
       this.cpuMode = 'custom';
       this.showToast('Custom TDP ready — adjust and apply.', 'info');
-      this.profilesOpen = false;
       return;
     }
-    this.selectProfile(profileName);
-    // Apply profile (CPU + system) and also sync fan speed
-    await this.applyProfile();
-    if (this.fanEnabled) {
-      await this.applyFan();
+    
+    const p = this.profiles.find(item => item.name === profileName);
+    if (p) {
+      this.profileName = p.name;
+      this.cpuTdp = p.powerLimit;
+      this.fanLevel = p.fanLevel;
+      
+      if (p.tempLimit !== undefined && p.tempLimit !== null) {
+        this.cpuTempLimit = p.tempLimit;
+      } else {
+        if (p.name === 'performance' || p.name === 'extreme') {
+          this.cpuTempLimit = 90;
+        } else if (p.name === 'table' || p.name === 'laptop') {
+          this.cpuTempLimit = 80;
+        } else {
+          this.cpuTempLimit = 70;
+        }
+      }
+      
+      this.cpuMode = (p.isCustom ? 'custom' : p.name) as any;
+      
+      const res = await this.ryzenService.setTdp(this.cpuTdp, this.cpuTempLimit);
+      if (res.success) {
+        this.showToast(`Profile '${p.label}' applied (TDP: ${this.cpuTdp}W, Temp: ${this.cpuTempLimit}°C)`, 'success');
+      } else {
+        this.showToast(res.message || 'Failed to apply profile TDP.', 'error');
+      }
+
+      if (this.fanEnabled) {
+        await this.applyFan();
+      }
     }
-    this.profilesOpen = false;
   }
 
   // ── Stress ──

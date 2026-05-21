@@ -8,7 +8,7 @@ import { FormsModule } from '@angular/forms';
   imports: [CommonModule, FormsModule],
   template: `
     <div class="card">
-      <h2 class="section-title">CPU Power Limit</h2>
+      <h2 class="section-title">CPU Power & Thermal Limits</h2>
       <div class="tdp-section">
         <div class="tdp-display-row">
           <div class="tdp-mode-stack">
@@ -26,7 +26,26 @@ import { FormsModule } from '@angular/forms';
           <span>8W</span><span>55W</span>
         </div>
       </div>
-      <button class="apply-btn" (click)="apply.emit()">Apply TDP</button>
+
+      <div class="tdp-section" style="margin-top: 8px;">
+        <div class="tdp-display-row">
+          <div class="tdp-mode-stack">
+            <span class="tdp-mode-badge">TEMP TARGET</span>
+            <span class="tdp-mode-sub">Thermal Throttle</span>
+          </div>
+          <span class="tdp-value">{{ tempLimit }}°C</span>
+        </div>
+        <input type="range" class="range-slider" id="temp-slider"
+          min="50" max="95" step="1"
+          [(ngModel)]="tempLimit"
+          (ngModelChange)="onTempLimitChange($event)"
+          [ngStyle]="{'--fill-pct': tempSliderFill}"/>
+        <div class="tdp-range-labels">
+          <span>50°C</span><span>95°C</span>
+        </div>
+      </div>
+
+      <button class="apply-btn" (click)="apply.emit()">Apply Limits</button>
     </div>
   `,
   styles: [`
@@ -106,14 +125,24 @@ import { FormsModule } from '@angular/forms';
 export class CPUPowerPanelComponent {
   @Input() mode: string = 'bed';
   @Input() tdp: number = 35;
+  @Input() tempLimit: number = 90;
   @Output() tdpChange = new EventEmitter<number>();
+  @Output() tempLimitChange = new EventEmitter<number>();
   @Output() apply = new EventEmitter<void>();
 
   get tdpSliderFill(): string {
     return `${((this.tdp - 8) / 47) * 100}%`;
   }
 
+  get tempSliderFill(): string {
+    return `${((this.tempLimit - 50) / 45) * 100}%`;
+  }
+
   onTdpChange(val: number) {
     this.tdpChange.emit(val);
+  }
+
+  onTempLimitChange(val: number) {
+    this.tempLimitChange.emit(val);
   }
 }

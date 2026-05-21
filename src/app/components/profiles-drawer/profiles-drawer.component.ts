@@ -9,6 +9,7 @@ import { CommonModule } from '@angular/common';
     <div class="profiles-drawer" [class.profiles-drawer--open]="open">
       <div class="drawer-header">
         <span class="drawer-title">PROFILES</span>
+        <button class="save-preset-btn" (click)="savePreset.emit()" title="Save current settings as a custom profile preset">💾 Save Current</button>
       </div>
       <div class="drawer-cards">
         <div *ngFor="let p of profiles"
@@ -52,9 +53,24 @@ import { CommonModule } from '@angular/common';
     .drawer-header {
       display: flex;
       align-items: center;
+      justify-content: space-between;
       padding: 12px 16px 8px;
     }
     .drawer-title { font-size: 10px; font-weight: 600; color: #555; text-transform: uppercase; letter-spacing: 0.1em; }
+    .save-preset-btn {
+      background: #1a2a3a;
+      border: 1px solid #2a4a6a;
+      color: #3b82f6;
+      font-size: 10px;
+      font-weight: 500;
+      padding: 4px 8px;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: background 150ms;
+    }
+    .save-preset-btn:hover {
+      background: #1e3040;
+    }
     .drawer-cards {
       display: flex;
       gap: 8px;
@@ -91,4 +107,5 @@ export class ProfilesDrawerComponent {
   @Input() currentProfile: string = '';
   @Input() profiles: any[] = [];
   @Output() selectProfile = new EventEmitter<string>();
+  @Output() savePreset = new EventEmitter<void>();
 }

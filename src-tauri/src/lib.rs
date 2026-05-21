@@ -34,8 +34,28 @@ async fn set_cpu_mode(mode: String) -> RyzenAdjResponse {
 }
 
 #[tauri::command]
-async fn set_cpu_tdp(value: u32) -> RyzenAdjResponse {
-    set_custom_limits(value)
+async fn set_cpu_tdp(value: u32, temp_limit: Option<u32>) -> RyzenAdjResponse {
+    let t_limit = temp_limit.unwrap_or(90);
+    set_custom_limits(value, t_limit)
+}
+
+#[tauri::command]
+async fn save_custom_presets(presets: String) -> Result<String, String> {
+    let presets_path = std::path::PathBuf::from(r"d:\Projects\UTILITY SOFT\Victus\victus-deck\custom_presets.json");
+    std::fs::write(&presets_path, presets)
+        .map_err(|e| format!("Failed to write preset config: {}", e))?;
+    Ok("Custom presets saved successfully.".to_string())
+}
+
+#[tauri::command]
+async fn load_custom_presets() -> Result<String, String> {
+    let presets_path = std::path::PathBuf::from(r"d:\Projects\UTILITY SOFT\Victus\victus-deck\custom_presets.json");
+    if !presets_path.exists() {
+        return Ok("[]".to_string());
+    }
+    let content = std::fs::read_to_string(&presets_path)
+        .map_err(|e| format!("Failed to read preset config: {}", e))?;
+    Ok(content)
 }
 
 #[tauri::command]
@@ -54,7 +74,9 @@ pub fn run() {
             get_cpu_status,
             start_cpu_stress,
             stop_cpu_stress,
-            get_stress_status
+            get_stress_status,
+            save_custom_presets,
+            load_custom_presets
         ])
         .run(tauri::generate_context!())
     {
