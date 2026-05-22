@@ -1,6 +1,5 @@
 import { Component, Input, Output, EventEmitter } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { WebviewWindow } from '@tauri-apps/api/webviewWindow';
 
 @Component({
   selector: 'app-nav-rail',
@@ -30,14 +29,6 @@ import { WebviewWindow } from '@tauri-apps/api/webviewWindow';
 
       <!-- Bottom Group: Utilities & Settings -->
       <div class="nav-group-bottom">
-        <!-- Companion Widget Launcher Button -->
-        <button class="nav-btn nav-btn--widget" (click)="toggleWidget()" title="Toggle Desktop Widget">
-          <svg viewBox="0 0 24 24" fill="currentColor" width="20" height="20">
-            <path d="M12.75 3a.75.75 0 0 0-1.5 0v8.25H3a.75.75 0 0 0 0 1.5h8.25V21a.75.75 0 0 0 1.5 0v-8.25H21a.75.75 0 0 0 0-1.5h-8.25V3Z" />
-          </svg>
-          <span class="nav-label">Widget</span>
-        </button>
-
         <!-- Settings tab button -->
         <button class="nav-btn" [class.nav-btn--active]="activePage === 'settings'" (click)="setPage('settings')" title="System Settings">
           <svg viewBox="0 0 24 24" fill="currentColor" width="20" height="20">
@@ -87,8 +78,6 @@ import { WebviewWindow } from '@tauri-apps/api/webviewWindow';
     .nav-btn:hover { background: #161616; color: #aaa; }
     .nav-btn--active { background: #1a2a3a; color: #3b82f6; }
     .nav-btn--active:hover { background: #1e3040; }
-    .nav-btn--widget { color: #555555; }
-    .nav-btn--widget:hover { color: #3b82f6; background: rgba(59, 130, 246, 0.05); }
     .nav-label { font-size: 8px; font-weight: 600; letter-spacing: 0.02em; text-transform: uppercase; }
   `]
 })
@@ -99,48 +88,5 @@ export class NavRailComponent {
   setPage(page: 'quick' | 'stress' | 'settings') {
     this.activePage = page;
     this.pageChange.emit(page);
-  }
-
-  async toggleWidget() {
-    try {
-      const label = 'widget';
-      const widgetWin = await WebviewWindow.getByLabel(label);
-      if (widgetWin) {
-        await widgetWin.close();
-      } else {
-        // Load settings to calculate height
-        let height = 188; // Default fully loaded height
-        try {
-          const stored = localStorage.getItem('niyantrak_settings');
-          if (stored) {
-            const parsed = JSON.parse(stored);
-            if (parsed.widget) {
-              height = 32; // Header
-              if (parsed.widget.showTemp) height += 48;
-              if (parsed.widget.showTdp) height += 36;
-              if (parsed.widget.showFan) height += 36;
-              if (parsed.widget.showProfiles) height += 36;
-            }
-          }
-        } catch (e) {
-          console.error(e);
-        }
-
-        const isDev = window.location.port !== '';
-        const url = isDev ? '?window=widget' : 'index.html?window=widget';
-        await new WebviewWindow(label, {
-          url: url,
-          width: 210,
-          height: height,
-          decorations: false,
-          alwaysOnTop: true,
-          resizable: false,
-          transparent: true,
-          skipTaskbar: true
-        });
-      }
-    } catch (e) {
-      console.error('Failed to toggle widget window from nav rail', e);
-    }
   }
 }

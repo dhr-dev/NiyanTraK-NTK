@@ -6,8 +6,19 @@ import { CommonModule } from '@angular/common';
   standalone: true,
   imports: [CommonModule],
   template: `
-    <!-- BEZEL RIBBONS: Stress on right edge -->
+    <!-- BEZEL RIBBONS: Widget + Stress on right edge -->
     <div class="bezel-wrap">
+      <!-- Widget ribbon: always visible, toggles desktop widget -->
+      <div class="ribbon ribbon--widget"
+        (click)="toggleWidget.emit()"
+        title="Toggle Desktop Companion Widget"
+      >
+        <svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16">
+          <path fill-rule="evenodd" d="M3 6a3 3 0 0 1 3-3h12a3 3 0 0 1 3 3v12a3 3 0 0 1-3 3H6a3 3 0 0 1-3-3V6Zm3-1.5h4.875v5.25H4.5V6a1.5 1.5 0 0 1 1.5-1.5ZM4.5 11.25v4.75a1.5 1.5 0 0 0 1.5 1.5h4.875v-6.25H4.5ZM19.5 6a1.5 1.5 0 0 0-1.5-1.5h-4.875v5.25H19.5V6Zm0 5.25h-6.875v6.25H18a1.5 1.5 0 0 0 1.5-1.5v-4.75Z" clip-rule="evenodd" />
+        </svg>
+        <span class="ribbon-text">WIDGET</span>
+      </div>
+
       <!-- Stress ribbon: always visible, toggles stress test -->
       <div class="ribbon ribbon--stress"
         [class.ribbon--stress-on]="stressActive"
@@ -60,6 +71,20 @@ import { CommonModule } from '@angular/common';
       border-left-color: #3b82f6;
       color: #7ab8f5;
     }
+    /* Widget ribbon: same shape, blue accent */
+    .ribbon--widget {
+      border-color: #1e3a5f;
+      border-left-color: #2563eb;
+      color: #3b82f6;
+    }
+    .ribbon--widget:hover {
+      background: #111827;
+      border-color: #3b82f6;
+      border-left-color: #60a5fa;
+      color: #60a5fa;
+      transform: translateX(-5px);
+      box-shadow: -3px 0 12px rgba(59, 130, 246, 0.35);
+    }
     /* Stress ribbon: same shape, red accent */
     .ribbon--stress {
       border-color: #3a1220;
@@ -92,4 +117,5 @@ import { CommonModule } from '@angular/common';
 export class BezelStripsComponent {
   @Input() stressActive: boolean = false;
   @Output() toggleStress = new EventEmitter<void>();
+  @Output() toggleWidget = new EventEmitter<void>();
 }

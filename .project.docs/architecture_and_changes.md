@@ -276,6 +276,11 @@ NiyanTraK now features an ultra-compact desktop companion widget and complete na
 - **Dynamic Core Burn Allocator**: Overhauled the Core Burn Allocator grid inside `StressPanelComponent` (`stress-panel.component.ts`) to dynamically query and map exactly the local system's active logical threads utilizing `navigator.hardwareConcurrency` (e.g. rendering exactly 12 thread slots for Hexa-Core Hyperthreaded processors) instead of a hardcoded 16.
 - **Centralized Presets Configuration File**: Isolated the default standard profiles from direct TS hardcoding and relocated them into a single centralized configuration file `presets.config.ts` (`src/app/presets.config.ts`). Imported this file synchronously across both the main orchestrator (`app.component.ts`) and the overlay widget (`widget.component.ts`), enabling easy pre-build adjustments in a single location.
 
+### 8.4 Bezel Strip Widget Launcher Migration (2026-05-22)
+- **Widget Trigger Relocation**: Migrated the companion widget toggle trigger from a simple `+` button in the left Navigation Rail to a highly attractive right-edge "bezel strip" (ribbon) docked vertically alongside the existing red "STRESS" bezel.
+- **Unified Ribbon Aesthetics**: Designed the new Widget bezel ribbon with a custom deep blue accent border (`#1e3a5f`), blue indicators (`#2563eb`), and glowing soft-blue hover shadow accents (`box-shadow`), sharing the exact same `58px` width profile, curvature, and sliding transition animations as the Stress ribbon.
+- **Decoupled Main Window Spawning**: Cleaned up Tauri window management dependencies inside `NavRailComponent` by completely removing `toggleWidget()` and the unused `@tauri-apps/api/webviewWindow` imports. Spawning logic is now consolidated in the root `AppComponent` using dynamic imports of `@tauri-apps/api/webviewWindow`, triggered seamlessly via an Angular `@Output() toggleWidget` event emitted from `<app-bezel-strips>`.
+
 
 
 

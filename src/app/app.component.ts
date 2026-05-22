@@ -94,6 +94,7 @@ import { WidgetComponent } from './components/widget/widget.component';
             <app-bezel-strips
               [stressActive]="stressActive"
               (toggleStress)="toggleStressTest()"
+              (toggleWidget)="toggleWidget()"
             ></app-bezel-strips>
 
             <!-- VIEWPORT: SCROLLABLE PAGES -->
@@ -756,6 +757,50 @@ export class AppComponent implements OnInit, OnDestroy {
       } else {
         this.showToast('Failed to start stress test.', 'error');
       }
+    }
+  }
+
+  async toggleWidget() {
+    try {
+      const { WebviewWindow } = await import('@tauri-apps/api/webviewWindow');
+      const label = 'widget';
+      const widgetWin = await WebviewWindow.getByLabel(label);
+      if (widgetWin) {
+        await widgetWin.close();
+      } else {
+        // Load settings to calculate height
+        let height = 188; // Default fully loaded height
+        try {
+          const stored = localStorage.getItem('niyantrak_settings');
+          if (stored) {
+            const parsed = JSON.parse(stored);
+            if (parsed.widget) {
+              height = 32; // Header
+              if (parsed.widget.showTemp) height += 48;
+              if (parsed.widget.showTdp) height += 36;
+              if (parsed.widget.showFan) height += 36;
+              if (parsed.widget.showProfiles) height += 36;
+            }
+          }
+        } catch (e) {
+          console.error(e);
+        }
+
+        const isDev = window.location.port !== '';
+        const url = isDev ? '?window=widget' : 'index.html?window=widget';
+        await new WebviewWindow(label, {
+          url: url,
+          width: 210,
+          height: height,
+          decorations: false,
+          alwaysOnTop: true,
+          resizable: false,
+          transparent: true,
+          skipTaskbar: true
+        });
+      }
+    } catch (e) {
+      console.error('Failed to toggle widget window', e);
     }
   }
 }
