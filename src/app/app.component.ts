@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { invoke } from '@tauri-apps/api/core';
 import { RyzenService } from './ryzen.service';
+import { DEFAULT_PROFILES } from './presets.config';
 
 // Modular Component Imports
 import { NavRailComponent } from './components/nav-rail/nav-rail.component';
@@ -15,6 +16,8 @@ import { FanControlComponent } from './components/fan-control/fan-control.compon
 import { CPUPowerPanelComponent } from './components/cpu-power-panel/cpu-power-panel.component';
 import { StressPanelComponent } from './components/stress-panel/stress-panel.component';
 import { FooterStripComponent } from './components/footer-strip/footer-strip.component';
+import { SettingsPanelComponent } from './components/settings-panel/settings-panel.component';
+import { WidgetComponent } from './components/widget/widget.component';
 
 @Component({
   selector: 'app-root',
@@ -31,108 +34,120 @@ import { FooterStripComponent } from './components/footer-strip/footer-strip.com
     FanControlComponent,
     CPUPowerPanelComponent,
     StressPanelComponent,
-    FooterStripComponent
+    FooterStripComponent,
+    SettingsPanelComponent,
+    WidgetComponent
   ],
   template: `
-    <div class="app-shell">
+    <ng-container *ngIf="isWidget; else fullAppShell">
+      <app-widget></app-widget>
+    </ng-container>
 
-      <!-- TOP BAR -->
-      <app-top-bar 
-        [statusText]="statusPillText"
-        [activeProfileLabel]="activeProfileLabel"
-        [activeToast]="activeToast"
-        [cpuName]="cpuName"
-      ></app-top-bar>
+    <ng-template #fullAppShell>
+      <div class="app-shell">
 
-      <!-- MAIN CONTAINER -->
-      <div class="main-container">
+        <!-- TOP BAR -->
+        <app-top-bar 
+          [statusText]="statusPillText"
+          [activeProfileLabel]="activeProfileLabel"
+          [activeToast]="activeToast"
+          [cpuName]="cpuName"
+        ></app-top-bar>
 
-        <!-- LEFT: NAV RAIL -->
-        <app-nav-rail [activePage]="activePage" (pageChange)="activePage = $event"></app-nav-rail>
+        <!-- MAIN CONTAINER -->
+        <div class="main-container">
 
-        <div class="main-frame-body">
-          <!-- STRESS BANNER -->
-          <app-stress-banner
-            [active]="stressActive"
-            [percent]="stressPercent"
-            [remaining]="stressRemaining"
-            (stop)="toggleStressTest()"
-          ></app-stress-banner>
+          <!-- LEFT: NAV RAIL -->
+          <app-nav-rail [activePage]="activePage" (pageChange)="activePage = $event"></app-nav-rail>
 
-          <!-- MONITOR STRIP -->
-          <app-monitor-strip
-            [metrics]="monitorMetrics"
-            [peakFast]="peakFastPpt"
-            [peakSlow]="peakSlowPpt"
-            [peakTemp]="peakTemp"
-            [dgpuBrand]="dgpuBrand"
-            (reset)="resetPeaks()"
-          ></app-monitor-strip>
+          <div class="main-frame-body">
+            <!-- STRESS BANNER -->
+            <app-stress-banner
+              [active]="stressActive"
+              [percent]="stressPercent"
+              [remaining]="stressRemaining"
+              (stop)="toggleStressTest()"
+            ></app-stress-banner>
 
-          <!-- PROFILES DRAWER -->
-          <app-profiles-drawer
-            [open]="profilesOpen"
-            [currentProfile]="profileName"
-            [profiles]="profiles"
-            (selectProfile)="onSelectProfile($event)"
-            (savePreset)="saveCustomPreset($event)"
-            (deletePreset)="deleteCustomPreset($event)"
-          ></app-profiles-drawer>
+            <!-- MONITOR STRIP -->
+            <app-monitor-strip
+              [metrics]="monitorMetrics"
+              [peakFast]="peakFastPpt"
+              [peakSlow]="peakSlowPpt"
+              [peakTemp]="peakTemp"
+              [dgpuBrand]="dgpuBrand"
+              (reset)="resetPeaks()"
+            ></app-monitor-strip>
 
-          <!-- BEZEL RIBBONS: Profiles + Stress on right edge -->
-          <app-bezel-strips
-            [stressActive]="stressActive"
-            (toggleStress)="toggleStressTest()"
-          ></app-bezel-strips>
+            <!-- PROFILES DRAWER -->
+            <app-profiles-drawer *ngIf="activePage === 'quick'"
+              [open]="profilesOpen"
+              [currentProfile]="profileName"
+              [profiles]="profiles"
+              (selectProfile)="onSelectProfile($event)"
+              (savePreset)="saveCustomPreset($event)"
+              (deletePreset)="deleteCustomPreset($event)"
+              (togglePin)="togglePresetPin($event)"
+            ></app-profiles-drawer>
 
-          <!-- VIEWPORT: SCROLLABLE PAGES -->
-          <main class="viewport">
-
-            <!-- QUICK CONTROL PAGE -->
-            <div *ngIf="activePage === 'quick'" class="page-quick">
-              <!-- FAN CONTROL CARD -->
-              <app-fan-control
-                [enabled]="fanEnabled"
-                [level]="fanLevel"
-                (toggle)="toggleFanControl()"
-                (levelChange)="fanLevel = $event"
-                (apply)="applyFan()"
-              ></app-fan-control>
-
-              <!-- RIGHT COLUMN: CPU Power limit stacked -->
-              <aside class="right-col">
-                <app-cpu-power-panel
-                  [mode]="cpuMode"
-                  [tdp]="cpuTdp"
-                  (tdpChange)="cpuTdp = $event; cpuMode = 'custom'; profileName = 'custom'"
-                  [tempLimit]="cpuTempLimit"
-                  (tempLimitChange)="cpuTempLimit = $event; cpuMode = 'custom'; profileName = 'custom'"
-                  (apply)="applyCustomTdp()"
-                ></app-cpu-power-panel>
-              </aside>
-            </div>
-
-            <!-- STRESS TEST DETAIL PAGE -->
-            <app-stress-panel *ngIf="activePage === 'stress'"
+            <!-- BEZEL RIBBONS: Profiles + Stress on right edge -->
+            <app-bezel-strips
               [stressActive]="stressActive"
-              [stressDuration]="stressDuration"
-              [stressTotal]="stressTotal"
-              [stressSelectedDuration]="stressSelectedDuration"
-              [stressSelectedIntensity]="stressSelectedIntensity"
-              (selectDuration)="stressSelectedDuration = $event; stressTotal = $event"
-              (selectIntensity)="stressSelectedIntensity = $event"
               (toggleStress)="toggleStressTest()"
-            ></app-stress-panel>
+            ></app-bezel-strips>
 
-          </main>
+            <!-- VIEWPORT: SCROLLABLE PAGES -->
+            <main class="viewport">
 
-          <!-- FOOTER -->
-          <app-footer-strip></app-footer-strip>
-        </div>
+              <!-- QUICK CONTROL PAGE -->
+              <div *ngIf="activePage === 'quick'" class="page-quick">
+                <!-- FAN CONTROL CARD -->
+                <app-fan-control
+                  [enabled]="fanEnabled"
+                  [level]="fanLevel"
+                  (toggle)="toggleFanControl()"
+                  (levelChange)="fanLevel = $event"
+                  (apply)="applyFan()"
+                ></app-fan-control>
 
-      </div><!-- /main-container -->
+                <!-- RIGHT COLUMN: CPU Power limit stacked -->
+                <aside class="right-col">
+                  <app-cpu-power-panel
+                    [mode]="cpuMode"
+                    [tdp]="cpuTdp"
+                    (tdpChange)="cpuTdp = $event; cpuMode = 'custom'; profileName = 'custom'"
+                    [tempLimit]="cpuTempLimit"
+                    (tempLimitChange)="cpuTempLimit = $event; cpuMode = 'custom'; profileName = 'custom'"
+                    (apply)="applyCustomTdp()"
+                  ></app-cpu-power-panel>
+                </aside>
+              </div>
 
-    </div>
+              <!-- STRESS TEST DETAIL PAGE -->
+              <app-stress-panel *ngIf="activePage === 'stress'"
+                [stressActive]="stressActive"
+                [stressDuration]="stressDuration"
+                [stressTotal]="stressTotal"
+                [stressSelectedDuration]="stressSelectedDuration"
+                [stressSelectedIntensity]="stressSelectedIntensity"
+                (selectDuration)="stressSelectedDuration = $event; stressTotal = $event"
+                (selectIntensity)="stressSelectedIntensity = $event"
+                (toggleStress)="toggleStressTest()"
+              ></app-stress-panel>
+
+              <!-- SYSTEM SETTINGS PAGE -->
+              <app-settings-panel *ngIf="activePage === 'settings'"></app-settings-panel>
+
+            </main>
+
+            <!-- FOOTER -->
+            <app-footer-strip></app-footer-strip>
+          </div>
+
+        </div><!-- /main-container -->
+
+      </div>
+    </ng-template>
   `,
   styles: [`
     /* ─── RESET ─── */
@@ -232,7 +247,8 @@ export class AppComponent implements OnInit, OnDestroy {
   private ryzenService = inject(RyzenService);
 
   // Navigation
-  activePage: 'quick' | 'stress' = 'quick';
+  activePage: 'quick' | 'stress' | 'settings' = 'quick';
+  isWidget = false;
   profilesOpen = true;
   cpuName = '';
   dgpuBrand = 'UNKNOWN';
@@ -282,13 +298,7 @@ export class AppComponent implements OnInit, OnDestroy {
   readonly intensityPresets = ['Light', 'Medium', 'Heavy', 'Maximum'];
   readonly threadCores = [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16];
 
-  profiles: any[] = [
-    { name: 'battery',     powerLimit: 12, fan: 'silent',   fanLevel: 8,  fanLabel: 'Silent',  label: 'Battery Saver', tempLimit: 90 },
-    { name: 'laptop',      powerLimit: 25, fan: 'balanced',  fanLevel: 30, fanLabel: 'Quiet',   label: 'Bed Mode',      tempLimit: 90 },
-    { name: 'table',       powerLimit: 35, fan: 'medium',    fanLevel: 30, fanLabel: 'Med',     label: 'Table Mode',    tempLimit: 90 },
-    { name: 'performance', powerLimit: 45, fan: 'high',      fanLevel: 34, fanLabel: 'High',    label: 'Performance',   tempLimit: 90 },
-    { name: 'extreme',     powerLimit: 55, fan: 'max',       fanLevel: 39, fanLabel: 'Max',     label: 'Extreme',       tempLimit: 90 }
-  ];
+  profiles: any[] = [...DEFAULT_PROFILES.map(p => ({ ...p }))];
 
   // ── Getters ──
 
@@ -370,9 +380,31 @@ export class AppComponent implements OnInit, OnDestroy {
   // ── Lifecycle ──
 
   async ngOnInit() {
+    const urlParams = new URLSearchParams(window.location.search);
+    this.isWidget = urlParams.get('window') === 'widget';
+    
+    if (this.isWidget) {
+      return;
+    }
+
     this.startCpuStatusPolling();
     this.checkStressStatus();
     await this.loadPresets();
+    await this.syncMinimizeToTray();
+  }
+
+  async syncMinimizeToTray() {
+    try {
+      const stored = localStorage.getItem('niyantrak_settings');
+      if (stored) {
+        const settings = JSON.parse(stored);
+        if (settings.minimizeToTray !== undefined) {
+          await invoke('set_minimize_to_tray', { enabled: settings.minimizeToTray });
+        }
+      }
+    } catch (e) {
+      console.error('Failed to sync minimize to tray on startup', e);
+    }
   }
 
   ngOnDestroy() {
@@ -533,13 +565,18 @@ export class AppComponent implements OnInit, OnDestroy {
     try {
       const dataStr = await this.ryzenService.loadCustomPresets();
       const custom = JSON.parse(dataStr || '[]');
-      this.profiles = [
-        { name: 'battery',     powerLimit: 12, fan: 'silent',   fanLevel: 8,  fanLabel: 'Silent',  label: 'Battery Saver', tempLimit: 90 },
-        { name: 'laptop',      powerLimit: 25, fan: 'balanced',  fanLevel: 30, fanLabel: 'Quiet',   label: 'Bed Mode',      tempLimit: 90 },
-        { name: 'table',       powerLimit: 35, fan: 'medium',    fanLevel: 30, fanLabel: 'Med',     label: 'Table Mode',    tempLimit: 90 },
-        { name: 'performance', powerLimit: 45, fan: 'high',      fanLevel: 34, fanLabel: 'High',    label: 'Performance',   tempLimit: 90 },
-        { name: 'extreme',     powerLimit: 55, fan: 'max',       fanLevel: 39, fanLabel: 'Max',     label: 'Extreme',       tempLimit: 90 }
-      ];
+      
+      const standardPinsStr = localStorage.getItem('pinned_standard_presets');
+      const standardPins = JSON.parse(standardPinsStr || '[]');
+
+      this.profiles = [...DEFAULT_PROFILES.map(p => ({ ...p }))];
+
+      for (const p of this.profiles) {
+        if (standardPins.includes(p.name)) {
+          p.isPinned = true;
+        }
+      }
+
       if (Array.isArray(custom)) {
         for (const p of custom) {
           this.profiles.push(p);
@@ -605,8 +642,43 @@ export class AppComponent implements OnInit, OnDestroy {
     try {
       await this.ryzenService.saveCustomPresets(JSON.stringify(customOnly));
       this.showToast(`Preset '${p.label}' deleted successfully!`, 'info');
+      try {
+        const { WebviewWindow } = await import('@tauri-apps/api/webviewWindow');
+        const widgetWin = await WebviewWindow.getByLabel('widget');
+        if (widgetWin) {
+          await widgetWin.emit('profiles_changed');
+        }
+      } catch (e) {
+        console.error(e);
+      }
     } catch (err) {
       this.showToast(`Failed to delete preset: ${err}`, 'error');
+    }
+  }
+
+  async togglePresetPin(name: string) {
+    const p = this.profiles.find(item => item.name === name);
+    if (!p) return;
+    p.isPinned = !p.isPinned;
+    
+    const standardPins = this.profiles.filter(item => !item.isCustom && item.isPinned).map(item => item.name);
+    localStorage.setItem('pinned_standard_presets', JSON.stringify(standardPins));
+
+    const customOnly = this.profiles.filter(p => p.isCustom);
+    try {
+      await this.ryzenService.saveCustomPresets(JSON.stringify(customOnly));
+      this.showToast(p.isPinned ? `Preset '${p.label}' pinned to widget` : `Preset '${p.label}' unpinned from widget`, 'success');
+      try {
+        const { WebviewWindow } = await import('@tauri-apps/api/webviewWindow');
+        const widgetWin = await WebviewWindow.getByLabel('widget');
+        if (widgetWin) {
+          await widgetWin.emit('profiles_changed');
+        }
+      } catch (e) {
+        console.error(e);
+      }
+    } catch (err) {
+      this.showToast(`Failed to update preset pin: ${err}`, 'error');
     }
   }
 

@@ -1,4 +1,4 @@
-import { Component, Input, Output, EventEmitter } from '@angular/core';
+import { Component, Input, Output, EventEmitter, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 
 @Component({
@@ -113,7 +113,7 @@ import { CommonModule } from '@angular/common';
     .thread-pct--on { color: #ef4444; font-weight: 600; }
   `]
 })
-export class StressPanelComponent {
+export class StressPanelComponent implements OnInit {
   @Input() stressActive: boolean = false;
   @Input() stressDuration: number = 0;
   @Input() stressTotal: number = 60;
@@ -132,5 +132,10 @@ export class StressPanelComponent {
     { label: '30 min', value: 1800 }
   ];
   readonly intensityPresets = ['Light', 'Medium', 'Heavy', 'Maximum'];
-  readonly threadCores = [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16];
+  threadCores: number[] = [];
+
+  ngOnInit() {
+    const coresCount = navigator.hardwareConcurrency || 8;
+    this.threadCores = Array.from({ length: coresCount }, (_, i) => i + 1);
+  }
 }

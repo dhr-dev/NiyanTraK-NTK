@@ -215,4 +215,69 @@ The parent `AppComponent` remains the central state orchestrator, managing backg
   - **Typography Enhancements**: Scaled up slider boundaries `.slider-edge` and readout subtext `.readout-sub` to `12.5px` with a highly readable `#bbb` / `#aaa` color scheme. Also scaled active TDP badges `.tdp-mode-badge` to `12.5px` and throttle subtext `.tdp-mode-sub` to `12px` to guarantee maximum clarity and contrast.
   - **Glass apply-btn**: Custom-morphed standard dark buttons into responsive glowing glass buttons with hover brightness shifts, border overlays, and scaling click animations (`transform: scale(0.98)`).
 
+---
+
+## 7. Desktop Widget & System Tray Integration (2026-05-22)
+
+NiyanTraK now features an ultra-compact desktop companion widget and complete native operating system integration with the Windows system tray.
+
+### 7.1 Compact Floating Telemetry Widget (`app-widget`)
+- **Visual Design**: The desktop widget is an ultra-slim, frameless window with rich glassy transparency (`backdrop-filter: blur(20px)`), an subtle outer border, and precise row elements.
+- **Draggable Drag Region**: A custom header strip (`32px` high) serves as a drag region (`data-tauri-drag-region`), allowing easy dragging and placement anywhere on the desktop.
+- **Always-on-Top Toggle**: A premium toggle allows pinning the widget (`setAlwaysOnTop(true)`) to stay visible above all full-screen applications, or unpinning it to float normally.
+- **Dynamic Size Adjuster**: 
+  - To minimize the desktop footprint, users can toggle individual rows (Temperature Gauges, TDP Control, Fan control, Pinned Profiles) from the Settings screen.
+  - Toggling these rows automatically calculates the exact new widget height and dynamically scales the window size using Tauri's `@tauri-apps/api/dpi` `LogicalSize` APIs.
+  - This ensures that there is zero empty space and the window occupies only the pixels it needs.
+
+### 7.2 System Tray Menu & Window Event Hooks
+- **Tray Icon**: The app creates a native system tray icon utilizing Tauri's `TrayIconBuilder`.
+- **System Tray Menu**: Right-clicking the tray icon presents a context menu:
+  - **Show App**: Restores, unminimizes, and focuses the main NiyanTraK window.
+  - **Toggle Widget**: Opens the desktop widget if closed, or shuts it down if active.
+  - **Quit**: Exits the process.
+- **Left-Click Action**: Single left-clicking the tray icon toggles the visibility of the main window (hiding it if visible, restoring it if hidden).
+- **Minimize to Tray Event Hook**: 
+  - Inside Rust, a custom hook listens for `tauri::WindowEvent::Resized` events.
+  - If a resize event corresponds to the window being minimized (`is_minimized() == true`), and the **"Minimize to System Tray"** setting is active, the app intercepts the event and invokes `window.hide()` to keep the app running in the background.
+
+### 7.3 Standalone Widget Launch Mode
+- **CLI Startup Flag (`--widget`)**: The Tauri application supports launching only the companion widget without the main dashboard.
+- **Execution Workflow**:
+  - The Rust backend parses startup arguments. If `--widget` is detected, it skips showing the main `"main"` window and immediately constructs and displays *only* the `"widget"` frameless overlay.
+  - Clicking the **"Show App"** tray option or double-clicking the tray icon at any point seamlessly loads the main dashboard layout.
+
+---
+
+## 8. Bug Fixes (2026-05-22)
+
+### 8.1 Companion Widget Development Mode URL Resolution
+- **Issue**: In development mode (where the local dev server operates dynamically on `http://localhost:1420/`), relative resolution using the static build target path `'index.html?window=widget'` failed to route correctly or load, preventing the companion widget from spawning or working properly under `npm run tauri dev`.
+- **Resolution**: Implemented dynamic dev-mode detection using `window.location.port !== ''` inside both `SettingsPanelComponent` (`settings-panel.component.ts`) and `NavRailComponent` (`nav-rail.component.ts`). When a development environment is detected, the URL is correctly resolved to `?window=widget` (hitting `http://localhost:1420/?window=widget`), and defaults to `'index.html?window=widget'` under production environments.
+
+### 8.2 Profiles Drawer Structural Isolation
+- **Issue**: When navigating away from the dashboard ("Quick Control") to other sections like "Settings" or "Stress" via the left Nav Rail, the `<app-profiles-drawer>` element remained present in the main container, leaking borders, margins, and rendering cards in inappropriate views.
+- **Resolution**: Wrapped the `<app-profiles-drawer>` declaration inside `app.component.ts` with Angular's structural directive `*ngIf="activePage === 'quick'"`. This ensures the profiles drawer is cleanly destroyed and removed from the DOM on other pages, avoiding layout leaks and keeping the viewport uncluttered.
+
+### 8.3 Frameless Desktop Widget Polishing, Drag-Move, and Dynamic Panel Toggling (2026-05-22)
+- **Widget Sizing**: Shrunk overall widget width from `230px` to `210px` for a much narrower, compact look.
+- **Telemetry Rings Size**: Compacted the core and skin temp gauges to `32px` width and height, reducing the panel height to `48px`.
+- **Selector Buttons Amplification**: Made the borderless 4-stage selectors for TDP and Fan auto-flex (`flex: 1`) with vertical padding `padding: 6px 0` and larger font sizes, allowing them to stretch to fill all available horizontal and vertical space for ease of clicking.
+- **Tauri Drag Move Capability**: Added `"core:window:allow-start-dragging"` permission to `default.json` capability profile to authorize JS-based window drags. Implemented a robust manual window dragging system using `win.startDragging()` inside `widget.component.ts` on header `mousedown` to bypass Webview2 native capturing limitations on transparent frames.
+- **Interactive Click Isolation**: Segregated the header dragging and button controls by using `(mousedown)="$event.stopPropagation()"` on `.header-controls`. This guarantees 100% responsive header window-dragging while keeping the control buttons perfectly aligned and clickable.
+- **Pin (Always-On-Top) Visual Clarity**: Enhanced visual feedback for the Pin (`📌`) button. The unpinned button displays with `opacity: 0.5`, while the pinned/active state shifts to `opacity: 1` with a distinctive sleek blue background glow (`background: rgba(59, 130, 246, 0.15)`) and micro-border.
+- **Dynamic Panel Removal (Minus Buttons)**: Implemented subtle, round minus (`-`) buttons on each widget panel. To keep the UI clutter-free, these buttons are hover-activated (hidden by default and fading into view on panel hover). Clicking a minus button hides the panel, updates `localStorage`, and triggers dynamic window resizing.
+- **Real-Time Cross-Window Synchronization**: Added a Tauri event-listener for `'layout_changed'` inside the main app's `SettingsPanelComponent` (`settings-panel.component.ts`). If the user removes a panel directly from the widget overlay, the corresponding settings checkbox dynamically unchecks in real-time.
+- **Scrollbar Bleed Prevention**: Injected a global stylesheet override (`::ng-deep html, ::ng-deep body { overflow: hidden !important; background: transparent !important; }`) to ensure absolutely no scrollbars are ever rendered in the widget.
+- **Ellipsis chip wrapping**: Formatted `.profile-chip` with `flex: 1; text-overflow: ellipsis; overflow: hidden; white-space: nowrap; min-width: 0` for equal flex widths and ellipsis handling when names are long.
+- **Universal preset pinning**: Enabled the pin button `📌` for standard presets as well, persisting their states in `localStorage` under `pinned_standard_presets`. The widget automatically fallbacks to showing Battery, Table, and Perf (labeled `"Perf"`) only when there are no custom or standard presets pinned.
+- **TDP Selector Highlight Sync**: Stabilized the active TDP selector stage highlight by computing closest limits using `maxTdp` (`limits.fast_limit`) instead of real-time telemetry draw (`cpuTdp` / `limits.fast_value`), preventing the highlighted button from jumping when the CPU is idle.
+- **Temp Rings Label Legibility**: Shrunk the font weight of `.ring-val` and `.ring-lbl` inside circular gauges to `400 !important` (Normal weight), ensuring the tiny telemetry text inside the circles is perfectly crisp, non-bold, and easy to read.
+- **Dynamic Core Burn Allocator**: Overhauled the Core Burn Allocator grid inside `StressPanelComponent` (`stress-panel.component.ts`) to dynamically query and map exactly the local system's active logical threads utilizing `navigator.hardwareConcurrency` (e.g. rendering exactly 12 thread slots for Hexa-Core Hyperthreaded processors) instead of a hardcoded 16.
+- **Centralized Presets Configuration File**: Isolated the default standard profiles from direct TS hardcoding and relocated them into a single centralized configuration file `presets.config.ts` (`src/app/presets.config.ts`). Imported this file synchronously across both the main orchestrator (`app.component.ts`) and the overlay widget (`widget.component.ts`), enabling easy pre-build adjustments in a single location.
+
+
+
+
+
 

@@ -25,7 +25,12 @@ import { FormsModule } from '@angular/forms';
           >
             <div class="drawer-card-header">
               <span class="drawer-card-name">{{ p.label }}</span>
-              <button *ngIf="p.isCustom" class="delete-preset-btn" (click)="onDelete($event, p.name)" title="Delete custom preset">🗑️</button>
+              <div class="drawer-card-actions">
+                <button class="pin-preset-btn" [class.pin-preset-btn--pinned]="p.isPinned" (click)="onTogglePin($event, p.name)" [title]="p.isPinned ? 'Unpin from Widget' : 'Pin to Widget'">
+                  📌
+                </button>
+                <button *ngIf="p.isCustom" class="delete-preset-btn" (click)="onDelete($event, p.name)" title="Delete custom preset">🗑️</button>
+              </div>
             </div>
             <div class="drawer-card-spec">{{ p.powerLimit }}W · {{ p.tempLimit }}°C · {{ p.fanLabel }}</div>
           </div>
@@ -178,6 +183,33 @@ import { FormsModule } from '@angular/forms';
       text-overflow: ellipsis;
     }
     
+    .drawer-card-actions {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .pin-preset-btn {
+      background: transparent;
+      border: none;
+      color: #888;
+      font-size: 10px;
+      padding: 2px;
+      cursor: pointer;
+      border-radius: 4px;
+      transition: all 150ms ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      filter: grayscale(1) opacity(0.35);
+    }
+    .pin-preset-btn:hover {
+      filter: grayscale(0) opacity(1);
+      background: rgba(255, 255, 255, 0.05);
+    }
+    .pin-preset-btn--pinned {
+      filter: grayscale(0) opacity(1);
+    }
+
     .delete-preset-btn {
       background: transparent;
       border: none;
@@ -249,6 +281,7 @@ export class ProfilesDrawerComponent {
   @Output() selectProfile = new EventEmitter<string>();
   @Output() savePreset = new EventEmitter<string>();
   @Output() deletePreset = new EventEmitter<string>();
+  @Output() togglePin = new EventEmitter<string>();
 
   hasOverflow = false;
   customPresetName: string = '';
@@ -256,6 +289,11 @@ export class ProfilesDrawerComponent {
   onDelete(event: Event, name: string) {
     event.stopPropagation();
     this.deletePreset.emit(name);
+  }
+
+  onTogglePin(event: Event, name: string) {
+    event.stopPropagation();
+    this.togglePin.emit(name);
   }
 
   checkOverflow(el: HTMLElement) {

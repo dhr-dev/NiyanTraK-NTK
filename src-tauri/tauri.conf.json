@@ -12,9 +12,11 @@
   "app": {
     "windows": [
       {
+        "label": "main",
         "title": "NiyanTraK",
         "width": 800,
         "height": 600,
+        "visible": false,
         "backgroundColor": "#0d0f14"
       }
     ],
