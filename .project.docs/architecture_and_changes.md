@@ -281,6 +281,11 @@ NiyanTraK now features an ultra-compact desktop companion widget and complete na
 - **Unified Ribbon Aesthetics**: Designed the new Widget bezel ribbon with a custom deep blue accent border (`#1e3a5f`), blue indicators (`#2563eb`), and glowing soft-blue hover shadow accents (`box-shadow`), sharing the exact same `58px` width profile, curvature, and sliding transition animations as the Stress ribbon.
 - **Decoupled Main Window Spawning**: Cleaned up Tauri window management dependencies inside `NavRailComponent` by completely removing `toggleWidget()` and the unused `@tauri-apps/api/webviewWindow` imports. Spawning logic is now consolidated in the root `AppComponent` using dynamic imports of `@tauri-apps/api/webviewWindow`, triggered seamlessly via an Angular `@Output() toggleWidget` event emitted from `<app-bezel-strips>`.
 
+### 8.5 Native Application Polish: Selection Behavior (2026-05-22)
+- **Global Selection Disable**: Applied `user-select: none` globally to all tags to ensure web-based cursor highlights do not leak, preserving a fully polished native Windows shell behavior.
+- **Input Field Exclusion**: Explicitly whitelisted interactive text components (`input`, `textarea`, `[contenteditable="true"]`) to allow normal user-focus, editability, and cursor text selections where expected.
+
+
 
 
 

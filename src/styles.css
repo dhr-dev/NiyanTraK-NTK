@@ -28,3 +28,16 @@ html, body {
   min-height: 100vh;
   overflow-x: hidden;
 }
+
+/* Disable text selection globally to make it feel like a native desktop app */
+*, *::before, *::after {
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* Enable text selection specifically in input fields and editable elements */
+input, textarea, [contenteditable="true"] {
+  user-select: text;
+  -webkit-user-select: text;
+}
+
