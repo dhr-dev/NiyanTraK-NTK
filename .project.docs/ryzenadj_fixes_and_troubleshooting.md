@@ -58,3 +58,38 @@ The AMD Ryzen architecture controls package power using three distinct thermal a
 These limits operate as overlapping ceilings. If we only exposed a slider for Fast PPT but left Slow PPT at its default low floor, the CPU would only boost for 5 seconds before dropping down to the Slow PPT floor, rendering custom presets ineffective. 
 
 By binding all three limits to **the exact same value** via a single slider, we configure a unified sustained power envelope, ensuring the CPU sustains the requested wattage continuously without stepped throttling.
+
+---
+
+## 4. Under-the-Hood Architecture & Mechanics: How RyzenAdj Interacts with the CPU
+
+To understand how our application controls CPU limits, it is critical to grasp the hardware-level interface between our user-mode Tauri app, the dynamic libraries, the kernel driver, and the actual silicon co-processor.
+
+### 4.1 The Security Barrier: User-Space vs. Kernel-Space (Ring 3 vs. Ring 0)
+Modern operating systems enforce a strict boundary between user applications and system hardware:
+- **Tauri / Rust Backend (Ring 3)**: Standard programs run in "User Space" where the CPU prevents direct memory access to physical registers, PCI configurations, and CPU Model-Specific Registers (MSRs) for security. Attempting direct hardware writes from Ring 3 triggers an OS crash (Memory Access Violation).
+- **Kernel Drivers (Ring 0)**: Operating system kernels and drivers run in "Kernel Space," which has unrestricted access to CPU registers and memory.
+
+### 4.2 The WinRing0 Bridge
+Since writing and signing a custom kernel driver with Microsoft is slow and expensive, `ryzenadj` utilizes the **WinRing0** driver framework:
+- **`WinRing0x64.sys`**: A generic, pre-signed Kernel Space (Ring 0) driver. Because it has a valid Microsoft driver signature, Windows allows it to load.
+- **`WinRing0x64.dll`**: A User Space (Ring 3) library. It exposes standard C/C++ APIs to communicate with the `.sys` driver using standard Windows **IOCTL (Input/Output Control)** system calls.
+- **The Protocol**: When `ryzenadj` needs to read or write a hardware register, it asks `WinRing0x64.dll` to send an IOCTL command. The Windows Kernel maps this request to `WinRing0x64.sys`, which executes the physical memory read/write at Ring 0 and passes the data back to user-space.
+
+### 4.3 The SMU (System Management Unit) Mailbox Handshake
+Once Ring 0 access is established via WinRing0, `ryzenadj` must interact with the **System Management Unit (SMU)**. The SMU is a dedicated on-die microcontroller in AMD CPUs that controls voltages, frequencies, and power limits independently of the main x86 cores.
+
+Because AMD does not publicly document the SMU's internal structures, `ryzenadj` interacts with it via a **Mailbox Protocol** (typically mapped to specific PCI configuration spaces or physical Memory-Mapped I/O registers in the `0xFED80000` region):
+
+1. **Populate Arguments**: The program writes the command argument (e.g., target TDP limits like `35000` milliwatts) into the SMU argument registers (`SMU_MSG_ARG`).
+2. **Send Message ID**: It writes a specific numeric command ID (which changes depending on the CPU generation, e.g., Cezanne vs. Phoenix) into the SMU message/command register (`SMU_MSG_CMD`).
+3. **Trigger Handshake**: It sets a hardware bit signaling the SMU that a command is waiting in the mailbox.
+4. **Poll Status**: It loops, reading the response register (`SMU_MSG_RESP`) until the SMU co-processor completes the command and returns a success signature (typically `0x1`).
+
+### 4.4 Directory Resource Map
+To ensure `ryzenadj` can execute correctly, the following adjacent resources are bundled:
+- **`ryzenadj.exe`**: A CLI executable wrapping `libryzenadj.dll` for command-line control.
+- **`libryzenadj.dll`**: The dynamic library containing the hardware offsets, registers, and mailbox commands tailored to different AMD CPU generations.
+- **`WinRing0x64.dll` / `WinRing0x64.sys`**: The User-to-Kernel space bridge files.
+- **`inpoutx64.dll`**: An alternative fallback input-output port driver wrapper.
+

@@ -335,6 +335,60 @@ pub fn set_custom_limits(mut tdp_watts: u32, mut temp_limit: u32) -> RyzenAdjRes
     ])
 }
 
+pub fn get_dgpu_brand() -> &'static str {
+    static BRAND: OnceLock<String> = OnceLock::new();
+    BRAND.get_or_init(|| {
+        let mut cmd = Command::new("powershell");
+        cmd.args(["-Command", "Get-CimInstance Win32_VideoController | Select-Object -ExpandProperty Name"]);
+        #[cfg(windows)]
+        cmd.creation_flags(0x08000000);
+        
+        if let Ok(output) = cmd.output() {
+            let names = String::from_utf8_lossy(&output.stdout).to_uppercase();
+            if names.contains("NVIDIA") || names.contains("GEFORCE") || names.contains("RTX") || names.contains("GTX") {
+                "NVIDIA".to_string()
+            } else if names.contains("RADEON") || names.contains("AMD") {
+                if names.contains("NVIDIA") {
+                    "NVIDIA".to_string()
+                } else {
+                    "AMD".to_string()
+                }
+            } else {
+                "UNKNOWN".to_string()
+            }
+        } else {
+            "UNKNOWN".to_string()
+        }
+    })
+}
+
+pub fn get_cpu_brand_name() -> &'static str {
+    static CPU_NAME: OnceLock<String> = OnceLock::new();
+    CPU_NAME.get_or_init(|| {
+        let mut cmd = Command::new("powershell");
+        cmd.args(["-Command", "Get-CimInstance Win32_Processor | Select-Object -ExpandProperty Name"]);
+        #[cfg(windows)]
+        cmd.creation_flags(0x08000000);
+        
+        if let Ok(output) = cmd.output() {
+            let raw_name = String::from_utf8_lossy(&output.stdout).trim().to_string();
+            let clean = raw_name
+                .split(" w/")
+                .next()
+                .unwrap_or(&raw_name)
+                .split(" with")
+                .next()
+                .unwrap_or(&raw_name)
+                .trim()
+                .to_string();
+            clean
+        } else {
+            "AMD Ryzen CPU".to_string()
+        }
+    })
+}
+
+
 pub fn get_cpu_status() -> RyzenAdjResponse {
     let _lock = ryzenadj_mutex().lock().unwrap();
     let exe = find_ryzenadj_exe();
@@ -403,9 +457,9 @@ pub fn get_cpu_status() -> RyzenAdjResponse {
                     if let Some(val) = parse_line_value(line) { stapm_time = val; }
                 } else if lower.contains("slowppttimeconst") {
                     if let Some(val) = parse_line_value(line) { slow_time = val; }
-                } else if lower.contains("thm limit core") {
+                } else if lower.contains("thm limit core") || lower.contains("tctl limit") {
                     if let Some(val) = parse_line_value(line) { tctl_limit = val; }
-                } else if lower.contains("thm value core") {
+                } else if lower.contains("thm value core") || lower.contains("tctl value") {
                     if let Some(val) = parse_line_value(line) { tctl_value = val; }
                 } else if lower.contains("stt limit apu") {
                     if let Some(val) = parse_line_value(line) { apu_skin_limit = val; }
@@ -436,6 +490,8 @@ pub fn get_cpu_status() -> RyzenAdjResponse {
                     "apu_skin_value": apu_skin_value,
                     "dgpu_skin_limit": dgpu_skin_limit,
                     "dgpu_skin_value": dgpu_skin_value,
+                    "dgpu_brand": get_dgpu_brand(),
+                    "cpu_name": get_cpu_brand_name(),
                 })),
             }
         }
