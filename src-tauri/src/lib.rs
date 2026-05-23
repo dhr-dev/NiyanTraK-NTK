@@ -61,16 +61,19 @@ async fn set_cpu_tdp(value: u32, temp_limit: Option<u32>) -> RyzenAdjResponse {
 }
 
 #[tauri::command]
-async fn save_custom_presets(presets: String) -> Result<String, String> {
-    let presets_path = std::path::PathBuf::from(r"d:\Projects\UTILITY SOFT\Victus\victus-deck\custom_presets.json");
+async fn save_custom_presets(app: tauri::AppHandle, presets: String) -> Result<String, String> {
+    let app_dir = app.path().app_data_dir().map_err(|e| e.to_string())?;
+    std::fs::create_dir_all(&app_dir).map_err(|e| format!("Failed to create AppData folder: {}", e))?;
+    let presets_path = app_dir.join("custom_presets.json");
     std::fs::write(&presets_path, presets)
         .map_err(|e| format!("Failed to write preset config: {}", e))?;
     Ok("Custom presets saved successfully.".to_string())
 }
 
 #[tauri::command]
-async fn load_custom_presets() -> Result<String, String> {
-    let presets_path = std::path::PathBuf::from(r"d:\Projects\UTILITY SOFT\Victus\victus-deck\custom_presets.json");
+async fn load_custom_presets(app: tauri::AppHandle) -> Result<String, String> {
+    let app_dir = app.path().app_data_dir().map_err(|e| e.to_string())?;
+    let presets_path = app_dir.join("custom_presets.json");
     if !presets_path.exists() {
         return Ok("[]".to_string());
     }
@@ -82,6 +85,31 @@ async fn load_custom_presets() -> Result<String, String> {
 #[tauri::command]
 async fn get_cpu_status() -> RyzenAdjResponse {
     query_cpu_status()
+}
+
+use std::sync::atomic::AtomicU32;
+static HEART_CLICKS: AtomicU32 = AtomicU32::new(0);
+
+#[tauri::command]
+fn register_heart_click() -> Result<String, String> {
+    let clicks = HEART_CLICKS.fetch_add(1, Ordering::Relaxed) + 1;
+    if clicks >= 9 {
+        HEART_CLICKS.store(0, Ordering::Relaxed);
+        
+        let logs = core::logger::get_recent_logs();
+        
+        if let Ok(exe_path) = std::env::current_exe() {
+            if let Some(exe_dir) = exe_path.parent() {
+                let log_file = exe_dir.join("victus_deck_debug_logs.txt");
+                if let Err(e) = std::fs::write(&log_file, &logs) {
+                    return Err(format!("Failed to write debug log: {}", e));
+                }
+                return Ok(format!("Logs successfully exported to {:?}", log_file));
+            }
+        }
+        return Err("Failed to resolve root installation directory".to_string());
+    }
+    Ok(format!("Click registered ({}/9)", clicks))
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -100,7 +128,8 @@ pub fn run() {
             save_custom_presets,
             load_custom_presets,
             set_minimize_to_tray,
-            get_minimize_to_tray
+            get_minimize_to_tray,
+            register_heart_click
         ])
         .setup(|app| {
             // Check command line arguments

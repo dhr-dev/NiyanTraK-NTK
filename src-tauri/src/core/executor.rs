@@ -12,6 +12,9 @@ pub fn apply_profile(profile: Profile) -> String {
     log.push_str(&format!("Power limit: {}W\n", profile.power_limit_w));
     log.push_str(&format!("Fan mode: {}\n", profile.fan_mode));
 
+    let log_msg = format!("Profile Swap - Target: [{}], Limit: [{}W], Fan: [{}]", profile.name, profile.power_limit_w, profile.fan_mode);
+    crate::core::logger::add_log(&log_msg);
+
     // ----------------------------
     // SAFE EXECUTION LAYER (BASE)
     // ----------------------------

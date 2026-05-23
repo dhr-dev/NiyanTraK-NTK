@@ -14,6 +14,9 @@ pub fn start_cpu_stress() -> bool {
         .map(|n| n.get())
         .unwrap_or(8);
 
+    let log_msg = format!("Stress Test - Started with {} threads", num_cores);
+    crate::core::logger::add_log(&log_msg);
+
     println!("[Stress Test] Starting CPU Stress Test with {} threads", num_cores);
 
     for i in 0..num_cores {
@@ -39,6 +42,7 @@ pub fn start_cpu_stress() -> bool {
 pub fn stop_cpu_stress() -> bool {
     println!("[Stress Test] Stopping CPU Stress Test");
     STRESS_ACTIVE.store(false, Ordering::SeqCst);
+    crate::core::logger::add_log("Stress Test - Terminated manually");
     false
 }
 

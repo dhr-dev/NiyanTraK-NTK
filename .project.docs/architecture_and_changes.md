@@ -146,6 +146,10 @@ The parent `AppComponent` remains the central state orchestrator, managing backg
 2. **Width Split (50/50 Layout)**: Custom elements `app-fan-control` and `app-cpu-power-panel` are styled with host flex rules (`flex: 1; display: flex; flex-direction: column;`) to preserve perfect visual column sizing.
 3. **Margins & Bezel Peeking**: Layout paddings and absolute overlay coordinate maps leverage the standard `59px` right margin to maintain symmetrical alignment alongside the right edge bezel tabs.
 4. **Curved Inner Frame Dock**: The main content wrapper `.main-frame-body` features a `border-top: 1px solid #222`, `border-left: 1px solid #222`, and `border-top-left-radius: 14px`. This creates a premium, smooth rounded border intersection where the top bar and left nav-rail meet, blending the outer `#0d0d0d` visual frame into the inner `#111111` active dashboard workspace.
+5. **Unified Spacing Symmetry**: To prevent layout asymmetry under different operational modes, all outer margins (left, right, top bounds) and inner stacked row gaps are calibrated to exactly `16px`. This is achieved dynamically by:
+   - Setting the scrollable `.viewport` top padding to `16px` (matching its `16px` left and bottom padding).
+   - Calibrating the `.monitor-strip` bottom padding to `0px` so that it seamlessly yields to the viewport's top padding, creating a perfect `16px` gap between telemetries and page contents in both scrolled and unscrolled states.
+   - Adjusting active `.profiles-drawer` margins to `16px 59px 0 16px` and active `.stress-banner` margins to `16px 59px 0 16px` (with inactive `border: none` to prevent layout outline leaks) to preserve the perfect spacing balance under all states.
 
 ### Visual Design Tokens (enforced)
 | Token            | Value     | Usage                          |
@@ -284,6 +288,22 @@ NiyanTraK now features an ultra-compact desktop companion widget and complete na
 ### 8.5 Native Application Polish: Selection Behavior (2026-05-22)
 - **Global Selection Disable**: Applied `user-select: none` globally to all tags to ensure web-based cursor highlights do not leak, preserving a fully polished native Windows shell behavior.
 - **Input Field Exclusion**: Explicitly whitelisted interactive text components (`input`, `textarea`, `[contenteditable="true"]`) to allow normal user-focus, editability, and cursor text selections where expected.
+
+---
+
+## 9. Sliding Debug Log Buffer & Easter Egg (2026-05-23)
+
+### 9.1 Sliding Debug Log Buffer
+- **Thread-Safe Memory Buffer**: Implemented inside `src-tauri/src/core/logger.rs` using a thread-safe `OnceLock<Mutex<Vec<LogEntry>>>` memory layout.
+- **2-Minute Sliding Time Window**: Keeps only entries generated within the last **2 minutes (120 seconds)**. The buffer dynamically drops older entries upon new log insertions or log fetch requests utilizing an in-place `buffer.retain(...)` cleanup scan.
+- **Application Instrumentation**: Core systems (RyzenAdj power limiters, fan controllers, executor profiles, and stress workload pipelines) invoke `crate::core::logger::add_log(msg)` directly to record telemetry and state adjustments.
+
+### 9.2 Heart-Click Easter Egg Log Exporter
+- **Atomic Heart Tracker**: Keeps track of heart click events inside Tauri using a thread-safe atomic counter (`HEART_CLICKS: AtomicU32`).
+- **9-Click Trigger**: Clicking the heart emoji (`❤️`) in the footer **9 times** triggers the log export. 
+- **Angular-to-Tauri Decoupling**: The Angular frontend handles *only* the Tauri command invocation (`register_heart_click`), keeping all count, resetting, and filesystem writing logic safely in the Rust backend.
+- **File Export Location**: The logs are compiled and written as a formatted text file (`victus_deck_debug_logs.txt`) directly in the application's root installation folder (resolving `std::env::current_exe()` parent directory dynamically at runtime).
+
 
 
 

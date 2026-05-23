@@ -83,7 +83,7 @@ import { FormsModule } from '@angular/forms';
     .profiles-drawer--open {
       max-height: 130px;
       opacity: 1;
-      margin: 8px 59px 8px 16px;
+      margin: 16px 59px 0 16px;
       padding: 4px 0;
       box-shadow: 0 8px 24px rgba(0,0,0,0.4);
     }

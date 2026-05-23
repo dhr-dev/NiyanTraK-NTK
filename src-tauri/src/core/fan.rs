@@ -4,7 +4,23 @@ use std::process::Command;
 use std::os::windows::process::CommandExt;
 
 pub fn apply_fan_mode(mode: &str) -> String {
-    let script_path = r"C:\Program Files\fanControl\omen-hub-but-better\OmenHwCtl.ps1";
+    // 1. Resolve relative to the current running executable (works in production installations)
+    let mut resolved_script = std::env::current_exe()
+        .ok()
+        .and_then(|p| p.parent().map(|dir| dir.join("resources").join("OmenHwCtl.ps1")))
+        .filter(|p| p.exists())
+        .map(|p| p.to_string_lossy().to_string());
+
+    // 2. Fallback: check current working directory resources directory (standard for tauri dev and cargo runs)
+    if resolved_script.is_none() {
+        let dev_path = std::path::Path::new("resources").join("OmenHwCtl.ps1");
+        if dev_path.exists() {
+            resolved_script = Some(dev_path.to_string_lossy().to_string());
+        }
+    }
+
+    // 3. Fallback: default to local script name in current working directory
+    let script_path = resolved_script.unwrap_or_else(|| String::from("OmenHwCtl.ps1"));
 
     let level = match mode {
         "silent" => "19:19",
@@ -22,7 +38,7 @@ pub fn apply_fan_mode(mode: &str) -> String {
         "-ExecutionPolicy",
         "Bypass",
         "-File",
-        script_path,
+        &script_path,
         "-SetFanLevel",
         level,
     ]);
@@ -37,11 +53,18 @@ pub fn apply_fan_mode(mode: &str) -> String {
             let stdout = String::from_utf8_lossy(&o.stdout);
             let stderr = String::from_utf8_lossy(&o.stderr);
 
+            let log_msg = format!("Fan Mode - Applied Level [{}], Mode [{}], stdout: {}, stderr: {}", level, mode, stdout.trim(), stderr.trim());
+            crate::core::logger::add_log(&log_msg);
+
             format!(
                 "fan mode: {}\nlevel: {}\nstdout:\n{}\nstderr:\n{}",
                 mode, level, stdout, stderr
             )
         }
-        Err(e) => format!("execution error: {}", e),
+        Err(e) => {
+            let log_msg = format!("Fan Mode - Applied Level [{}], Mode [{}], Error: {}", level, mode, e);
+            crate::core::logger::add_log(&log_msg);
+            format!("execution error: {}", e)
+        }
     }
 }

@@ -14,19 +14,29 @@ pub struct RyzenAdjResponse {
 }
 
 fn find_ryzenadj_exe() -> PathBuf {
-    // 1. First, check user's specified absolute dev resource path
-    let dev_path = Path::new(r"d:\Projects\UTILITY SOFT\Victus\victus-deck\src-tauri\resources\ryzenadj-win64\ryzenadj.exe");
-    if dev_path.exists() {
-        dev_path.to_path_buf()
-    } else {
-        // 2. Next, check relative ./bin/ryzenadj.exe
-        let local_bin = Path::new("./bin/ryzenadj.exe");
-        if local_bin.exists() {
-            local_bin.to_path_buf()
-        } else {
-            // 3. Fallback to system PATH (just "ryzenadj")
-            PathBuf::from("ryzenadj")
+    // 1. Resolve relative to the current running executable (works in production installations)
+    if let Ok(exe_path) = std::env::current_exe() {
+        if let Some(exe_dir) = exe_path.parent() {
+            let prod_path = exe_dir.join("resources").join("ryzenadj-win64").join("ryzenadj.exe");
+            if prod_path.exists() {
+                return prod_path;
+            }
         }
+    }
+
+    // 2. Fallback: check current working directory resources directory (standard for tauri dev and cargo runs)
+    let dev_path = Path::new("resources").join("ryzenadj-win64").join("ryzenadj.exe");
+    if dev_path.exists() {
+        return dev_path;
+    }
+
+    // 3. Fallback: check relative ./bin directory
+    let local_bin = Path::new("bin").join("ryzenadj.exe");
+    if local_bin.exists() {
+        local_bin
+    } else {
+        // 4. Default to system PATH
+        PathBuf::from("ryzenadj")
     }
 }
 
@@ -218,6 +228,9 @@ fn run_ryzenadj(args: &[&str]) -> RyzenAdjResponse {
             let stderr = String::from_utf8_lossy(&o.stderr).trim().to_string();
             let status_code = o.status.code().unwrap_or(-1);
             
+            let log_msg = format!("RyzenAdj Run - Args: {:?}, Exit Code: {}, stdout: {}, stderr: {}", args, status_code, stdout, stderr);
+            crate::core::logger::add_log(&log_msg);
+
             println!("[RyzenAdj] stdout: {}", stdout);
             if !stderr.is_empty() {
                 println!("[RyzenAdj] stderr: {}", stderr);
@@ -268,6 +281,9 @@ fn run_ryzenadj(args: &[&str]) -> RyzenAdjResponse {
             }
         }
         Err(e) => {
+            let log_msg = format!("RyzenAdj Error - Args: {:?}, Error: {}", args, e);
+            crate::core::logger::add_log(&log_msg);
+
             let msg = if e.kind() == std::io::ErrorKind::NotFound {
                 format!("ryzenadj.exe was not found. Please ensure it is located at {:?} or in your system PATH.", exe)
             } else {

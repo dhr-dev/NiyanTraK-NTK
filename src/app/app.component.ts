@@ -197,7 +197,7 @@ import { WidgetComponent } from './components/widget/widget.component';
       flex: 1;
       min-height: 0;
       overflow-y: auto;
-      padding: 8px 59px 16px 16px;
+      padding: 16px 59px 16px 16px;
     }
     .viewport::-webkit-scrollbar { width: 4px; }
     .viewport::-webkit-scrollbar-track { background: transparent; }
