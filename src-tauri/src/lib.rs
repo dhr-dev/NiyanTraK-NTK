@@ -2,11 +2,12 @@ mod core;
 
 use core::profiles::get_profile;
 use core::executor::apply_profile;
-use crate::core::fan::apply_fan_mode;
+use crate::core::fan::{apply_fan_mode, SmartFanState, SmartFanConfig, process_smart_fan};
 use core::ryzen_adj::{RyzenAdjResponse, set_performance_mode, set_balanced_mode, set_silent_mode, set_custom_limits, get_cpu_status as query_cpu_status};
 use core::stress::{start_cpu_stress, stop_cpu_stress, get_stress_status};
 
 use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::Mutex;
 use tauri::menu::{Menu, MenuItem};
 use tauri::tray::{TrayIconBuilder, TrayIconEvent};
 use tauri::Manager;
@@ -14,6 +15,7 @@ use tauri::Manager;
 #[derive(Default)]
 pub struct AppState {
     pub minimize_to_tray: AtomicBool,
+    pub smart_fan: Mutex<SmartFanState>,
 }
 
 #[tauri::command]
@@ -26,7 +28,6 @@ fn get_minimize_to_tray(state: tauri::State<'_, AppState>) -> bool {
     state.minimize_to_tray.load(Ordering::Relaxed)
 }
 
-
 #[tauri::command]
 fn run_profile(profile: String) -> String {
     match get_profile(&profile) {
@@ -36,9 +37,44 @@ fn run_profile(profile: String) -> String {
 }
 
 #[tauri::command]
-fn set_fan_mode(mode: String) -> String {
+fn set_fan_mode(state: tauri::State<'_, AppState>, mode: String) -> String {
+    let parsed_level = match mode.as_str() {
+        "silent" => 19,
+        "balanced" | "medium" => 30,
+        "high" | "turbo" => 34,
+        "max" => 39,
+        custom if custom.contains(':') => {
+            custom.split(':').next().and_then(|s| s.parse::<u32>().ok()).unwrap_or(0)
+        }
+        _ => 0,
+    };
+    if let Ok(mut smart_fan) = state.smart_fan.lock() {
+        if smart_fan.config.enabled {
+            smart_fan.config.enabled = false;
+            smart_fan.temp_history.clear();
+        }
+        smart_fan.last_applied_level = parsed_level;
+    }
     apply_fan_mode(&mode)
 }
+
+#[tauri::command]
+fn set_smart_fan_config(state: tauri::State<'_, AppState>, config: SmartFanConfig) -> Result<(), String> {
+    let mut smart_fan = state.smart_fan.lock().map_err(|e| e.to_string())?;
+    if !config.enabled && smart_fan.config.enabled {
+        smart_fan.last_applied_level = 0;
+        smart_fan.temp_history.clear();
+    }
+    smart_fan.config = config;
+    Ok(())
+}
+
+#[tauri::command]
+fn get_smart_fan_config(state: tauri::State<'_, AppState>) -> Result<SmartFanConfig, String> {
+    let smart_fan = state.smart_fan.lock().map_err(|e| e.to_string())?;
+    Ok(smart_fan.config.clone())
+}
+
 
 #[tauri::command]
 async fn set_cpu_mode(mode: String) -> RyzenAdjResponse {
@@ -83,9 +119,42 @@ async fn load_custom_presets(app: tauri::AppHandle) -> Result<String, String> {
 }
 
 #[tauri::command]
-async fn get_cpu_status() -> RyzenAdjResponse {
-    query_cpu_status()
+fn get_cpu_status(state: tauri::State<'_, AppState>) -> RyzenAdjResponse {
+    let mut res = query_cpu_status();
+    if res.success {
+        if let Some(ref mut data) = res.data {
+            if let Some(obj) = data.as_object_mut() {
+                let mut active_level = 0;
+                let mut is_enabled = false;
+                let mut decision_temp = 0.0;
+                let mut is_instant = false;
+                
+                if let Ok(mut smart_fan) = state.smart_fan.lock() {
+                    is_enabled = smart_fan.config.enabled;
+                    if is_enabled {
+                        if let Some(temp_val) = obj.get("tctl_value").and_then(|v| v.as_f64()) {
+                            let (applied_level, d_temp, was_instant, _changed) = process_smart_fan(temp_val, &mut *smart_fan);
+                            active_level = applied_level;
+                            decision_temp = d_temp;
+                            is_instant = was_instant;
+                        }
+                    } else {
+                        active_level = smart_fan.last_applied_level;
+                    }
+                }
+                
+                obj.insert("smart_fan_enabled".to_string(), serde_json::Value::Bool(is_enabled));
+                obj.insert("smart_fan_active_level".to_string(), serde_json::Value::Number(serde_json::Number::from(active_level)));
+                if is_enabled {
+                    obj.insert("smart_fan_decision_temp".to_string(), serde_json::Value::Number(serde_json::Number::from_f64(decision_temp).unwrap_or(serde_json::Number::from(0))));
+                    obj.insert("smart_fan_is_instant".to_string(), serde_json::Value::Bool(is_instant));
+                }
+            }
+        }
+    }
+    res
 }
+
 
 use std::sync::atomic::AtomicU32;
 static HEART_CLICKS: AtomicU32 = AtomicU32::new(0);
@@ -129,7 +198,9 @@ pub fn run() {
             load_custom_presets,
             set_minimize_to_tray,
             get_minimize_to_tray,
-            register_heart_click
+            register_heart_click,
+            set_smart_fan_config,
+            get_smart_fan_config
         ])
         .setup(|app| {
             // Check command line arguments

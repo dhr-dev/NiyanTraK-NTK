@@ -68,3 +68,165 @@ pub fn apply_fan_mode(mode: &str) -> String {
         }
     }
 }
+
+#[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
+pub struct FanCurvePoint {
+    pub temp: f64,
+    pub level: u32,
+}
+
+#[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
+pub struct SmartFanConfig {
+    pub enabled: bool,
+    pub points: Vec<FanCurvePoint>,
+    // Removed hysteresis_temp per user request as lower markings act as shift down
+    // pub hysteresis_temp: f64,
+    pub instant_spool_temp: f64,
+    pub average_poll_size: u32,
+    pub cooldown_secs: u64,
+    pub advanced: bool,
+}
+
+impl Default for SmartFanConfig {
+    fn default() -> Self {
+        Self {
+            enabled: false,
+            points: vec![
+                FanCurvePoint { temp: 40.0, level: 9 },  // 1200 RPM
+                FanCurvePoint { temp: 50.0, level: 14 }, // 2000 RPM
+                FanCurvePoint { temp: 65.0, level: 19 }, // 2500 RPM (changed 60.0 to 65.0, removed 70.0 point per user request)
+                FanCurvePoint { temp: 75.0, level: 26 }, // 3800 RPM
+                FanCurvePoint { temp: 80.0, level: 29 }, // 4200 RPM
+                FanCurvePoint { temp: 85.0, level: 32 }, // 5000 RPM
+                FanCurvePoint { temp: 90.0, level: 39 }, // 5700 RPM
+            ],
+            // hysteresis_temp: 3.0,
+            instant_spool_temp: 85.0,
+            average_poll_size: 3,
+            cooldown_secs: 10,
+            advanced: false,
+        }
+    }
+}
+
+pub struct SmartFanState {
+    pub config: SmartFanConfig,
+    pub temp_history: Vec<f64>,
+    pub last_applied_level: u32,
+    pub last_applied_time: u64,
+}
+
+impl Default for SmartFanState {
+    fn default() -> Self {
+        Self {
+            config: SmartFanConfig::default(),
+            temp_history: Vec::new(),
+            last_applied_level: 0,
+            last_applied_time: 0,
+        }
+    }
+}
+
+pub fn interpolate_fan_level(temp: f64, points: &[FanCurvePoint]) -> u32 {
+    if points.is_empty() {
+        return 30; // default fallback
+    }
+
+    let mut sorted_points = points.to_vec();
+    sorted_points.sort_by(|a, b| a.temp.partial_cmp(&b.temp).unwrap_or(std::cmp::Ordering::Equal));
+
+    if temp <= sorted_points[0].temp {
+        return sorted_points[0].level;
+    }
+    if temp >= sorted_points[sorted_points.len() - 1].temp {
+        return sorted_points[sorted_points.len() - 1].level;
+    }
+
+    for i in 0..sorted_points.len() - 1 {
+        let p1 = &sorted_points[i];
+        let p2 = &sorted_points[i+1];
+        if temp >= p1.temp && temp <= p2.temp {
+            let t_diff = p2.temp - p1.temp;
+            if t_diff.abs() < 1e-5 {
+                return p1.level;
+            }
+            let level_diff = p2.level as f64 - p1.level as f64;
+            let ratio = (temp - p1.temp) / t_diff;
+            let computed = p1.level as f64 + ratio * level_diff;
+            return computed.round() as u32;
+        }
+    }
+
+    30
+}
+
+pub fn process_smart_fan(temp: f64, state: &mut SmartFanState) -> (u32, f64, bool, bool) {
+    if !state.config.enabled {
+        return (0, 0.0, false, false);
+    }
+
+    // Add temp to rolling queue
+    state.temp_history.push(temp);
+    
+    // Maintain rolling average size based on user configuration
+    let poll_size = state.config.average_poll_size.max(1) as usize;
+    while state.temp_history.len() > poll_size {
+        state.temp_history.remove(0);
+    }
+
+    // Calculate rolling average
+    let rolling_avg_temp = if state.temp_history.is_empty() {
+        temp
+    } else {
+        let sum: f64 = state.temp_history.iter().sum();
+        sum / state.temp_history.len() as f64
+    };
+
+    let min_lvl = if state.config.advanced { 0 } else { 8 };
+    
+    // Interpolate raw level for instant spool-up check
+    let raw_target_level = interpolate_fan_level(temp, &state.config.points).clamp(min_lvl, 39);
+
+    // Instant spool up only if raw temp > threshold AND it shifts target level up
+    let is_instant = temp > state.config.instant_spool_temp && raw_target_level > state.last_applied_level;
+
+    let decision_temp = if is_instant {
+        temp
+    } else {
+        rolling_avg_temp
+    };
+
+    let target_level = interpolate_fan_level(decision_temp, &state.config.points);
+    let target_level = target_level.clamp(min_lvl, 39);
+
+    let current_time = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_secs();
+
+    let mut applied_change = false;
+
+    if state.last_applied_level == 0 {
+        state.last_applied_level = target_level;
+        state.last_applied_time = current_time;
+        let padded = format!("{:02}", target_level);
+        apply_fan_mode(&format!("{}:{}", padded, padded));
+        applied_change = true;
+    } else if target_level > state.last_applied_level {
+        state.last_applied_level = target_level;
+        state.last_applied_time = current_time;
+        let padded = format!("{:02}", target_level);
+        apply_fan_mode(&format!("{}:{}", padded, padded));
+        applied_change = true;
+    } else if target_level < state.last_applied_level {
+        if current_time - state.last_applied_time >= state.config.cooldown_secs {
+            state.last_applied_level = target_level;
+            state.last_applied_time = current_time;
+            let padded = format!("{:02}", target_level);
+            apply_fan_mode(&format!("{}:{}", padded, padded));
+            applied_change = true;
+        }
+    }
+
+    (state.last_applied_level, decision_temp, is_instant, applied_change)
+}

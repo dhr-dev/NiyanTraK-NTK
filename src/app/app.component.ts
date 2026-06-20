@@ -3,7 +3,8 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { invoke } from '@tauri-apps/api/core';
 import { RyzenService } from './ryzen.service';
-import { DEFAULT_PROFILES } from './presets.config';
+import DEFAULT_PROFILES from './config/presets.json';
+import { FanCurveService } from './fan-curve.service';
 
 // Modular Component Imports
 import { NavRailComponent } from './components/nav-rail/nav-rail.component';
@@ -18,6 +19,7 @@ import { StressPanelComponent } from './components/stress-panel/stress-panel.com
 import { FooterStripComponent } from './components/footer-strip/footer-strip.component';
 import { SettingsPanelComponent } from './components/settings-panel/settings-panel.component';
 import { WidgetComponent } from './components/widget/widget.component';
+import { FanCurvePanelComponent } from './components/fan-curve-panel/fan-curve-panel.component';
 
 @Component({
   selector: 'app-root',
@@ -36,7 +38,8 @@ import { WidgetComponent } from './components/widget/widget.component';
     StressPanelComponent,
     FooterStripComponent,
     SettingsPanelComponent,
-    WidgetComponent
+    WidgetComponent,
+    FanCurvePanelComponent
   ],
   template: `
     <ng-container *ngIf="isWidget; else fullAppShell">
@@ -104,11 +107,12 @@ import { WidgetComponent } from './components/widget/widget.component';
               <div *ngIf="activePage === 'quick'" class="page-quick">
                 <!-- FAN CONTROL CARD -->
                 <app-fan-control
-                  [enabled]="fanEnabled"
+                  [mode]="fanMode"
                   [level]="fanLevel"
-                  (toggle)="toggleFanControl()"
+                  (modeChange)="setFanMode($event)"
                   (levelChange)="fanLevel = $event"
                   (apply)="applyFan()"
+                  (configureCurve)="activePage = 'fancurve'"
                 ></app-fan-control>
 
                 <!-- RIGHT COLUMN: CPU Power limit stacked -->
@@ -138,6 +142,9 @@ import { WidgetComponent } from './components/widget/widget.component';
 
               <!-- SYSTEM SETTINGS PAGE -->
               <app-settings-panel *ngIf="activePage === 'settings'"></app-settings-panel>
+
+              <!-- FAN CURVE PANEL -->
+              <app-fan-curve-panel *ngIf="activePage === 'fancurve'" (showToast)="showToast($event.message, $event.type)"></app-fan-curve-panel>
 
             </main>
 
@@ -246,9 +253,10 @@ import { WidgetComponent } from './components/widget/widget.component';
 })
 export class AppComponent implements OnInit, OnDestroy {
   private ryzenService = inject(RyzenService);
+  private fanCurveService = inject(FanCurveService);
 
   // Navigation
-  activePage: 'quick' | 'stress' | 'settings' = 'quick';
+  activePage: 'quick' | 'stress' | 'settings' | 'fancurve' = 'quick';
   isWidget = false;
   profilesOpen = true;
   cpuName = '';
@@ -319,7 +327,8 @@ export class AppComponent implements OnInit, OnDestroy {
       apuSkin:      limits?.apu_skin_value ?? 0,
       apuSkinLimit: limits?.apu_skin_limit ?? 0,
       dgpuSkin:     limits?.dgpu_skin_value ?? 0,
-      dgpuSkinLimit: limits?.dgpu_skin_limit ?? 0
+      dgpuSkinLimit: limits?.dgpu_skin_limit ?? 0,
+      activeFanLevel: limits?.smart_fan_active_level ?? 0
     };
   }
 
@@ -392,6 +401,7 @@ export class AppComponent implements OnInit, OnDestroy {
     this.checkStressStatus();
     await this.loadPresets();
     await this.syncMinimizeToTray();
+    await this.fanCurveService.syncWithBackend();
   }
 
   async syncMinimizeToTray() {
@@ -441,6 +451,10 @@ export class AppComponent implements OnInit, OnDestroy {
     if (res.success && res.data) {
       this.cpuLimits = res.data;
       this.cpuErrorMsg = '';
+      if (this.cpuLimits.smart_fan_enabled && this.cpuLimits.smart_fan_active_level !== undefined) {
+        this.fanLevel = this.cpuLimits.smart_fan_active_level;
+        this.fanEnabled = true;
+      }
       if (res.data.cpu_name !== undefined && res.data.cpu_name !== null) {
         this.cpuName = res.data.cpu_name;
       }
@@ -473,6 +487,9 @@ export class AppComponent implements OnInit, OnDestroy {
   // ── CPU mode ──
 
   async applyCpuMode(mode: 'performance' | 'balanced' | 'silent' | 'bed') {
+    const label = mode === 'bed' ? 'Bed Mode' : mode.toUpperCase();
+    this.showToast(`Calibrating for ${label}...`, 'info');
+
     this.cpuMode = mode;
     if (mode === 'performance')                    this.cpuTdp = 55;
     else if (mode === 'balanced' || mode === 'bed') this.cpuTdp = 35;
@@ -480,7 +497,8 @@ export class AppComponent implements OnInit, OnDestroy {
 
     const res = await this.ryzenService.setMode(mode);
     if (res.success) {
-      this.showToast(`CPU Mode → ${mode === 'bed' ? 'Bed Mode' : mode.toUpperCase()}`, 'success');
+      await new Promise(resolve => setTimeout(resolve, 600));
+      this.showToast(`CPU Mode → ${label}`, 'success');
       this.pollCpuStatus();
     } else {
       this.showToast(res.message || 'Failed to set CPU mode.', 'error');
@@ -488,6 +506,8 @@ export class AppComponent implements OnInit, OnDestroy {
   }
 
   async applyCustomTdp() {
+    this.showToast('Adjusting thermal limits...', 'info');
+
     this.cpuMode = 'custom';
     if (this.cpuTdp < 8)  this.cpuTdp = 8;
     if (this.cpuTdp > 55) this.cpuTdp = 55;
@@ -495,6 +515,7 @@ export class AppComponent implements OnInit, OnDestroy {
     if (this.cpuTempLimit > 95) this.cpuTempLimit = 95;
     const res = await this.ryzenService.setTdp(this.cpuTdp, this.cpuTempLimit);
     if (res.success) {
+      await new Promise(resolve => setTimeout(resolve, 600));
       this.showToast(`Limits set: TDP ${this.cpuTdp}W · Temp ${this.cpuTempLimit}°C`, 'success');
       this.pollCpuStatus();
     } else {
@@ -519,6 +540,8 @@ export class AppComponent implements OnInit, OnDestroy {
   }
 
   async applyFan() {
+    this.showToast(this.fanEnabled ? 'Calibrating fan velocity...' : 'Reverting fan to system control...', 'info');
+
     let level: string;
     if (this.fanEnabled) {
       const padded = String(this.fanLevel).padStart(2, '0');
@@ -529,15 +552,41 @@ export class AppComponent implements OnInit, OnDestroy {
     try {
       const res = await invoke<string>('set_fan_mode', { mode: level });
       console.log(`[Fan] ${res}`);
+      await new Promise(resolve => setTimeout(resolve, 600));
       this.showToast(this.fanEnabled ? `Fan → ${this.getRpm(this.fanLevel)} RPM` : 'Fan → Auto', 'success');
     } catch (err) {
       this.showToast(`Failed to set fan: ${err}`, 'error');
     }
   }
 
+  get fanMode(): 'hp-auto' | 'smart-auto' | 'manual' {
+    if (this.cpuLimits?.smart_fan_enabled) {
+      return 'smart-auto';
+    }
+    return this.fanEnabled ? 'manual' : 'hp-auto';
+  }
+
+  async setFanMode(mode: 'hp-auto' | 'smart-auto' | 'manual') {
+    if (mode === 'hp-auto') {
+      this.fanEnabled = false;
+      await this.fanCurveService.setEnabled(false);
+      await this.applyFan();
+    } else if (mode === 'smart-auto') {
+      this.fanEnabled = true;
+      await this.fanCurveService.setEnabled(true);
+    } else if (mode === 'manual') {
+      this.fanEnabled = true;
+      await this.fanCurveService.setEnabled(false);
+      await this.applyFan();
+    }
+  }
+
   async toggleFanControl() {
-    this.fanEnabled = !this.fanEnabled;
-    await this.applyFan();
+    if (this.fanMode === 'hp-auto') {
+      await this.setFanMode('manual');
+    } else {
+      await this.setFanMode('hp-auto');
+    }
   }
 
   // ── Profiles ──
