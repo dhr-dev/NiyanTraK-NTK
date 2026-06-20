@@ -114,6 +114,25 @@ import { CommonModule } from '@angular/common';
             </div>
           </div>
         </div>
+
+        <!-- ACTIVE FAN SPEED -->
+        <div class="monitor-subrow-mini">
+          <div class="monitor-row">
+            <span class="subrow-title">ACTIVE FAN</span>
+            <div class="monitor-metrics-display">
+              <span class="monitor-value-main">
+                {{ metrics.activeFanLevel === 0 ? 'Auto (HP)' : getRpm(metrics.activeFanLevel) + ' RPM' }}
+                <span class="limit-val" *ngIf="metrics.activeFanLevel > 0">/ L{{ metrics.activeFanLevel }}</span>
+              </span>
+            </div>
+          </div>
+          <div class="monitor-bar-track" *ngIf="metrics.activeFanLevel > 0">
+            <div class="monitor-bar-fill"
+              [style.width]="metricPct(metrics.activeFanLevel, 39) + '%'"
+              [style.background]="'#3b82f6'">
+            </div>
+          </div>
+        </div>
       </div>
 
       <!-- RESET PEAKS -->
@@ -151,7 +170,7 @@ import { CommonModule } from '@angular/common';
       border-bottom: 1px solid #222;
       padding-bottom: 6px;
     }
-    .monitor-label { font-size: 11.5px; font-weight: 600; color: #888; text-transform: uppercase; letter-spacing: 0.06em; }
+    .monitor-label { font-size: 13px; font-weight: 600; color: #fff; letter-spacing: 0.02em; }
     .monitor-sub-info { font-size: 11px; color: #888; font-weight: 500; font-variant-numeric: tabular-nums; }
     .monitor-subrow-mini { display: flex; flex-direction: column; gap: 3px; }
     .monitor-row { display: flex; align-items: center; justify-content: space-between; }
@@ -318,7 +337,8 @@ export class MonitorStripComponent {
     apuSkin: 0,
     apuSkinLimit: 56,
     dgpuSkin: 0,
-    dgpuSkinLimit: 37.5
+    dgpuSkinLimit: 37.5,
+    activeFanLevel: 0
   };
   @Input() peakFast: number = 0;
   @Input() peakSlow: number = 0;
@@ -375,5 +395,15 @@ export class MonitorStripComponent {
     if (val < 48) return '#22c55e'; // safe green
     if (val < 58) return '#f59e0b'; // amber
     return '#ef4444'; // red
+  }
+
+  getRpm(level: number): number {
+    if (level <= 8)                 return 800;
+    if (level === 9)                return 1200;
+    if (level >= 10 && level <= 19) return 1600 + (level - 10) * 100;
+    if (level === 29)               return 4200;
+    if (level >= 20 && level <= 28) return 3200 + (level - 20) * 100;
+    if (level >= 30)                return 4800 + (level - 30) * 100;
+    return 800;
   }
 }

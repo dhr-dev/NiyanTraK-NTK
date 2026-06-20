@@ -9,7 +9,7 @@ import { FormsModule } from '@angular/forms';
   template: `
     <div class="profiles-drawer" [class.profiles-drawer--open]="open">
       <div class="drawer-header">
-        <span class="drawer-title">PROFILES</span>
+        <span class="drawer-title">Profiles</span>
       </div>
       <div class="drawer-cards-wrapper" (mouseenter)="checkOverflow(cardsContainer)">
         <button *ngIf="hasOverflow" class="scroll-btn scroll-btn--left" (click)="cardsContainer.scrollBy({ left: -240, behavior: 'smooth' })" title="Scroll left">
@@ -93,7 +93,7 @@ import { FormsModule } from '@angular/forms';
       justify-content: space-between;
       padding: 12px 16px 8px;
     }
-    .drawer-title { font-size: 11.5px; font-weight: 600; color: #888; text-transform: uppercase; letter-spacing: 0.1em; }
+    .drawer-title { font-size: 13px; font-weight: 600; color: #fff; letter-spacing: 0.02em; }
     /* Inline Custom Form inside Card */
     .custom-form {
       display: flex;

@@ -27,7 +27,12 @@ import { CommonModule } from '@angular/common';
             <span class="island-icon-toast">
               <ng-container *ngIf="activeToast.type === 'success'">✓</ng-container>
               <ng-container *ngIf="activeToast.type === 'error'">⚠</ng-container>
-              <ng-container *ngIf="activeToast.type === 'info'">ℹ</ng-container>
+              <ng-container *ngIf="activeToast.type === 'info'">
+                <svg class="island-spinner" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" width="10" height="10" style="display: block;">
+                  <circle cx="12" cy="12" r="10" stroke="rgba(59, 130, 246, 0.2)"></circle>
+                  <path d="M12 2a10 10 0 0 1 10 10" stroke="#3b82f6" stroke-linecap="round"></path>
+                </svg>
+              </ng-container>
             </span>
             <span class="island-message-toast">{{ activeToast.message }}</span>
           </ng-template>
@@ -143,6 +148,14 @@ import { CommonModule } from '@angular/common';
     .dynamic-island--success .island-icon-toast { background: rgba(34,197,94,0.15); color: #22c55e; }
     .dynamic-island--error .island-icon-toast { background: rgba(239,68,68,0.15); color: #ef4444; }
     .dynamic-island--info .island-icon-toast { background: rgba(59,130,246,0.15); color: #3b82f6; }
+    
+    .island-spinner {
+      animation: spin 1s linear infinite;
+    }
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
     
     .island-message-toast {
       font-size: 12px;

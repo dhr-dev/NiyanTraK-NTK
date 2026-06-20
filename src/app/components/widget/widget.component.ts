@@ -5,7 +5,7 @@ import { invoke } from '@tauri-apps/api/core';
 import { getCurrentWebviewWindow } from '@tauri-apps/api/webviewWindow';
 import { LogicalSize } from '@tauri-apps/api/dpi';
 import { RyzenService } from '../../ryzen.service';
-import { DEFAULT_PROFILES } from '../../presets.config';
+import DEFAULT_PROFILES from '../../config/presets.json';
 
 export interface WidgetSettings {
   showTemp: boolean;

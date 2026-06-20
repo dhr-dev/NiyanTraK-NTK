@@ -80,7 +80,7 @@ import { CommonModule } from '@angular/common';
       flex-direction: column;
       gap: 12px;
     }
-    .section-title { font-size: 13px; font-weight: 500; color: #bbb; }
+    .section-title { font-size: 13px; font-weight: 600; color: #fff; letter-spacing: 0.02em; }
 
     /* ─── APPLY BUTTON ─── */
     .apply-btn {
