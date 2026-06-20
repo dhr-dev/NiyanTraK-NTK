@@ -1,4 +1,4 @@
-import { Component, OnInit, OnDestroy, inject, ElementRef, ViewChild, Output, EventEmitter } from '@angular/core';
+import { Component, OnInit, OnDestroy, DoCheck, inject, ElementRef, ViewChild, Output, EventEmitter } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { FanCurveService } from '../../fan-curve.service';
@@ -797,7 +797,7 @@ import { RyzenService, FanCurvePoint } from '../../ryzen.service';
     }
   `]
 })
-export class FanCurvePanelComponent implements OnInit, OnDestroy {
+export class FanCurvePanelComponent implements OnInit, OnDestroy, DoCheck {
   private fanCurveService = inject(FanCurveService);
   private ryzenService = inject(RyzenService);
 
@@ -815,6 +815,40 @@ export class FanCurvePanelComponent implements OnInit, OnDestroy {
   shouldBlinkDanger = false;
   showAdvancedWarning = false;
   @Output() showToast = new EventEmitter<{ message: string; type: 'success' | 'error' | 'info' }>();
+  @Output() unsavedChanges = new EventEmitter<boolean>();
+  private lastDirtyState = false;
+
+  hasUnsavedChanges(): boolean {
+    const saved = this.fanCurveService.config;
+    const current = this.config;
+    if (saved.enabled !== current.enabled) return true;
+    if (saved.advanced !== current.advanced) return true;
+    if (saved.instant_spool_temp !== current.instant_spool_temp) return true;
+    if (saved.average_poll_size !== current.average_poll_size) return true;
+    if (saved.cooldown_secs !== current.cooldown_secs) return true;
+    if (saved.points.length !== current.points.length) return true;
+    for (let i = 0; i < saved.points.length; i++) {
+      if (saved.points[i].temp !== current.points[i].temp) return true;
+      if (saved.points[i].level !== current.points[i].level) return true;
+    }
+    return false;
+  }
+
+  ngDoCheck() {
+    const isDirty = this.hasUnsavedChanges();
+    if (isDirty !== this.lastDirtyState) {
+      this.lastDirtyState = isDirty;
+      this.unsavedChanges.emit(isDirty);
+    }
+  }
+
+  discardChanges() {
+    this.config = {
+      ...this.fanCurveService.config,
+      points: this.fanCurveService.config.points.map(p => ({ ...p }))
+    };
+    this.showToast.emit({ message: 'Unsaved fan curve changes discarded!', type: 'info' });
+  }
   loggerCollapsed = true;
   pollHistory: {
     timeMs: number;
@@ -881,6 +915,7 @@ export class FanCurvePanelComponent implements OnInit, OnDestroy {
     if (this.pollInterval) {
       clearInterval(this.pollInterval);
     }
+    this.unsavedChanges.emit(false);
   }
 
   updateLiveTemp() {

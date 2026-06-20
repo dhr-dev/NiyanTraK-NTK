@@ -1,7 +1,8 @@
-import { Component, inject, OnInit, OnDestroy } from '@angular/core';
+import { Component, inject, OnInit, OnDestroy, ViewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { invoke } from '@tauri-apps/api/core';
+import { getCurrentWebviewWindow } from '@tauri-apps/api/webviewWindow';
 import { RyzenService } from './ryzen.service';
 import DEFAULT_PROFILES from './config/presets.json';
 import { FanCurveService } from './fan-curve.service';
@@ -55,13 +56,14 @@ import { FanCurvePanelComponent } from './components/fan-curve-panel/fan-curve-p
           [activeProfileLabel]="activeProfileLabel"
           [activeToast]="activeToast"
           [cpuName]="cpuName"
+          [unsavedChanges]="fanCurveDirty"
         ></app-top-bar>
 
         <!-- MAIN CONTAINER -->
         <div class="main-container">
 
           <!-- LEFT: NAV RAIL -->
-          <app-nav-rail [activePage]="activePage" (pageChange)="activePage = $event"></app-nav-rail>
+          <app-nav-rail [activePage]="activePage" (pageChange)="changePage($event)"></app-nav-rail>
 
           <div class="main-frame-body">
             <!-- STRESS BANNER -->
@@ -72,18 +74,20 @@ import { FanCurvePanelComponent } from './components/fan-curve-panel/fan-curve-p
               (stop)="toggleStressTest()"
             ></app-stress-banner>
 
-            <!-- MONITOR STRIP -->
-            <app-monitor-strip
+            <!-- MONITOR STRIP (Sticky Mode, maximized or fullscreen) -->
+            <app-monitor-strip *ngIf="isStickyMonitor"
               [metrics]="monitorMetrics"
               [peakFast]="peakFastPpt"
               [peakSlow]="peakSlowPpt"
               [peakTemp]="peakTemp"
               [dgpuBrand]="dgpuBrand"
+              [compactMode]="activePage === 'fancurve' || activePage === 'settings'"
               (reset)="resetPeaks()"
+              [isSticky]="true"
             ></app-monitor-strip>
 
-            <!-- PROFILES DRAWER -->
-            <app-profiles-drawer *ngIf="activePage === 'quick'"
+            <!-- PROFILES DRAWER (Sticky Mode, maximized or fullscreen) -->
+            <app-profiles-drawer *ngIf="isStickyMonitor && activePage === 'quick'"
               [open]="profilesOpen"
               [currentProfile]="profileName"
               [profiles]="profiles"
@@ -91,6 +95,7 @@ import { FanCurvePanelComponent } from './components/fan-curve-panel/fan-curve-p
               (savePreset)="saveCustomPreset($event)"
               (deletePreset)="deleteCustomPreset($event)"
               (togglePin)="togglePresetPin($event)"
+              [isSticky]="true"
             ></app-profiles-drawer>
 
             <!-- BEZEL RIBBONS: Profiles + Stress on right edge -->
@@ -98,10 +103,36 @@ import { FanCurvePanelComponent } from './components/fan-curve-panel/fan-curve-p
               [stressActive]="stressActive"
               (toggleStress)="toggleStressTest()"
               (toggleWidget)="toggleWidget()"
+              (resetPeaks)="resetPeaks()"
             ></app-bezel-strips>
 
             <!-- VIEWPORT: SCROLLABLE PAGES -->
             <main class="viewport">
+              <!-- MONITOR STRIP (Non-Sticky Scrollable Mode, when not maximized) -->
+              <app-monitor-strip *ngIf="!isStickyMonitor"
+                [metrics]="monitorMetrics"
+                [peakFast]="peakFastPpt"
+                [peakSlow]="peakSlowPpt"
+                [peakTemp]="peakTemp"
+                [dgpuBrand]="dgpuBrand"
+                [compactMode]="activePage === 'fancurve' || activePage === 'settings'"
+                (reset)="resetPeaks()"
+                [isSticky]="false"
+                style="margin-bottom: 12px; display: block;"
+              ></app-monitor-strip>
+
+              <!-- PROFILES DRAWER (Non-Sticky Scrollable Mode, when not maximized) -->
+              <app-profiles-drawer *ngIf="!isStickyMonitor && activePage === 'quick'"
+                [open]="profilesOpen"
+                [currentProfile]="profileName"
+                [profiles]="profiles"
+                (selectProfile)="onSelectProfile($event)"
+                (savePreset)="saveCustomPreset($event)"
+                (deletePreset)="deleteCustomPreset($event)"
+                (togglePin)="togglePresetPin($event)"
+                [isSticky]="false"
+                style="margin-bottom: 12px; display: block;"
+              ></app-profiles-drawer>
 
               <!-- QUICK CONTROL PAGE -->
               <div *ngIf="activePage === 'quick'" class="page-quick">
@@ -112,7 +143,7 @@ import { FanCurvePanelComponent } from './components/fan-curve-panel/fan-curve-p
                   (modeChange)="setFanMode($event)"
                   (levelChange)="fanLevel = $event"
                   (apply)="applyFan()"
-                  (configureCurve)="activePage = 'fancurve'"
+                  (configureCurve)="changePage('fancurve')"
                 ></app-fan-control>
 
                 <!-- RIGHT COLUMN: CPU Power limit stacked -->
@@ -141,10 +172,10 @@ import { FanCurvePanelComponent } from './components/fan-curve-panel/fan-curve-p
               ></app-stress-panel>
 
               <!-- SYSTEM SETTINGS PAGE -->
-              <app-settings-panel *ngIf="activePage === 'settings'"></app-settings-panel>
+              <app-settings-panel *ngIf="activePage === 'settings'" (showToast)="showToast($event.message, $event.type)"></app-settings-panel>
 
               <!-- FAN CURVE PANEL -->
-              <app-fan-curve-panel *ngIf="activePage === 'fancurve'" (showToast)="showToast($event.message, $event.type)"></app-fan-curve-panel>
+              <app-fan-curve-panel *ngIf="activePage === 'fancurve'" (showToast)="showToast($event.message, $event.type)" (unsavedChanges)="fanCurveDirty = $event"></app-fan-curve-panel>
 
             </main>
 
@@ -204,7 +235,7 @@ import { FanCurvePanelComponent } from './components/fan-curve-panel/fan-curve-p
       flex: 1;
       min-height: 0;
       overflow-y: auto;
-      padding: 16px 59px 16px 16px;
+      padding: 8px 59px 16px 16px;
     }
     .viewport::-webkit-scrollbar { width: 4px; }
     .viewport::-webkit-scrollbar-track { background: transparent; }
@@ -249,18 +280,33 @@ import { FanCurvePanelComponent } from './components/fan-curve-panel/fan-curve-p
     .toast--success .toast-icon { background: rgba(34,197,94,0.15); color: #22c55e; }
     .toast--error   .toast-icon { background: rgba(239,68,68,0.15);  color: #ef4444; }
     .toast--info    .toast-icon { background: rgba(59,130,246,0.15); color: #3b82f6; }
+
+    @media (max-width: 750px) {
+      .page-quick {
+        flex-direction: column;
+        align-items: stretch;
+      }
+      .viewport {
+        padding: 8px 16px 16px 16px;
+      }
+    }
   `]
 })
 export class AppComponent implements OnInit, OnDestroy {
   private ryzenService = inject(RyzenService);
   private fanCurveService = inject(FanCurveService);
 
+  @ViewChild(FanCurvePanelComponent) fanCurvePanel?: FanCurvePanelComponent;
+  @ViewChild(MonitorStripComponent) monitorStrip?: MonitorStripComponent;
+
   // Navigation
   activePage: 'quick' | 'stress' | 'settings' | 'fancurve' = 'quick';
+  fanCurveDirty = false;
   isWidget = false;
   profilesOpen = true;
   cpuName = '';
   dgpuBrand = 'UNKNOWN';
+  isStickyMonitor = true;
 
   // Fan state
   fanLevel = 30;
@@ -368,6 +414,108 @@ export class AppComponent implements OnInit, OnDestroy {
 
   // ── Helpers ──
 
+  changePage(page: 'quick' | 'stress' | 'settings' | 'fancurve') {
+    this.activePage = page;
+    this.fanCurveDirty = false;
+  }
+
+  getFormattedTimestamp(): string {
+    const now = new Date();
+    const pad = (n: number) => String(n).padStart(2, '0');
+    return `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}_${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`;
+  }
+
+  private scheduledExportInterval: any = null;
+
+  initScheduledLogExport() {
+    if (this.scheduledExportInterval) {
+      clearInterval(this.scheduledExportInterval);
+      this.scheduledExportInterval = null;
+    }
+
+    const stored = localStorage.getItem('niyantrak_settings');
+    if (stored) {
+      try {
+        const parsed = JSON.parse(stored);
+        if (parsed) {
+          const schedule = parsed.logExportSchedule;
+          if (schedule && schedule !== 'disabled') {
+            // Check immediately on startup
+            this.checkScheduledLogExport();
+            // Then check every 1 minute
+            this.scheduledExportInterval = setInterval(() => {
+              this.checkScheduledLogExport();
+            }, 60000);
+          }
+        }
+      } catch (e) {
+        console.error('Failed to init scheduled log export:', e);
+      }
+    }
+  }
+
+  checkScheduledLogExport() {
+    const stored = localStorage.getItem('niyantrak_settings');
+    if (!stored) return;
+    try {
+      const parsed = JSON.parse(stored);
+      if (!parsed) return;
+      const schedule = parsed.logExportSchedule;
+      if (!schedule || schedule === 'disabled') return;
+
+      let intervalHours = 1;
+      if (schedule === '6h') {
+        intervalHours = 6;
+      } else if (schedule === '24h') {
+        intervalHours = 24;
+      } else if (schedule === 'custom') {
+        intervalHours = parsed.customLogExportHours;
+        if (intervalHours === undefined || intervalHours === null) {
+          intervalHours = 1;
+        }
+      }
+
+      const ms = intervalHours * 3600000;
+      const lastTimeStr = localStorage.getItem('last_scheduled_export_time');
+      const lastTime = lastTimeStr ? parseInt(lastTimeStr, 10) : 0;
+      const now = Date.now();
+
+      if (now - lastTime >= ms) {
+        this.runScheduledLogExport(now);
+      }
+    } catch (e) {
+      console.error('Failed checking scheduled log export:', e);
+    }
+  }
+
+  async runScheduledLogExport(timestamp: number) {
+    try {
+      localStorage.setItem('last_scheduled_export_time', String(timestamp));
+      const timestampStr = this.getFormattedTimestamp();
+      const res = await invoke<string>('export_debug_logs', { isScheduled: true, timestamp: timestampStr });
+      console.log('[Scheduled Exporter] Exported to:', res);
+      window.dispatchEvent(new Event('refresh_last_export_time'));
+    } catch (e) {
+      console.error('[Scheduled Exporter Error]', e);
+    }
+  }
+
+  async syncSettingsWithRust() {
+    try {
+      const stored = localStorage.getItem('niyantrak_settings');
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (parsed) {
+          if (parsed.exportOnShutdown !== undefined) {
+            await invoke('set_export_on_shutdown', { enabled: parsed.exportOnShutdown });
+          }
+        }
+      }
+    } catch (e) {
+      console.error('Failed to sync settings with Rust on startup', e);
+    }
+  }
+
   metricPct(val: number, limit: number): number {
     if (!limit) return 0;
     return Math.min(Math.round((val / limit) * 100), 100);
@@ -385,6 +533,12 @@ export class AppComponent implements OnInit, OnDestroy {
     this.peakSlowPpt = 0;
     this.peakTemp = 0;
     this.peakStapm = 0;
+    this.monitorStrip?.resetGraph();
+    if (this.activePage === 'fancurve' && this.fanCurvePanel) {
+      this.fanCurvePanel.discardChanges();
+    } else {
+      this.showToast('Peak telemetry & graph history reset!', 'success');
+    }
   }
 
   // ── Lifecycle ──
@@ -397,11 +551,43 @@ export class AppComponent implements OnInit, OnDestroy {
       return;
     }
 
+    // Initialize and track sticky behavior based on window state
+    this.updateStickyBehavior();
+    window.addEventListener('resize', () => {
+      this.updateStickyBehavior();
+    });
+
+    try {
+      const win = getCurrentWebviewWindow();
+      win.listen('tauri://resize', () => {
+        this.updateStickyBehavior();
+      });
+    } catch (e) {
+      console.error('Failed to listen to tauri://resize', e);
+    }
+
     this.startCpuStatusPolling();
     this.checkStressStatus();
     await this.loadPresets();
     await this.syncMinimizeToTray();
     await this.fanCurveService.syncWithBackend();
+    await this.syncSettingsWithRust();
+    
+    this.initScheduledLogExport();
+    window.addEventListener('sync_log_schedule', () => {
+      this.initScheduledLogExport();
+    });
+  }
+
+  async updateStickyBehavior() {
+    try {
+      const win = getCurrentWebviewWindow();
+      const maximized = await win.isMaximized();
+      const fullscreen = await win.isFullscreen();
+      this.isStickyMonitor = maximized || fullscreen;
+    } catch (e) {
+      this.isStickyMonitor = window.innerWidth > 750;
+    }
   }
 
   async syncMinimizeToTray() {
@@ -422,6 +608,9 @@ export class AppComponent implements OnInit, OnDestroy {
     if (this.pollInterval)       clearInterval(this.pollInterval);
     if (this.stressTimerInterval) clearInterval(this.stressTimerInterval);
     if (this.stressActive)       this.ryzenService.stopCpuStress();
+    if (this.scheduledExportInterval) {
+      clearInterval(this.scheduledExportInterval);
+    }
   }
 
   // ── Toast ──

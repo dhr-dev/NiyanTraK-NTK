@@ -16,6 +16,7 @@ use tauri::Manager;
 pub struct AppState {
     pub minimize_to_tray: AtomicBool,
     pub smart_fan: Mutex<SmartFanState>,
+    pub export_on_shutdown: AtomicBool,
 }
 
 #[tauri::command]
@@ -26,6 +27,11 @@ fn set_minimize_to_tray(state: tauri::State<'_, AppState>, enabled: bool) {
 #[tauri::command]
 fn get_minimize_to_tray(state: tauri::State<'_, AppState>) -> bool {
     state.minimize_to_tray.load(Ordering::Relaxed)
+}
+
+#[tauri::command]
+fn set_export_on_shutdown(state: tauri::State<'_, AppState>, enabled: bool) {
+    state.export_on_shutdown.store(enabled, Ordering::Relaxed);
 }
 
 #[tauri::command]
@@ -156,34 +162,158 @@ fn get_cpu_status(state: tauri::State<'_, AppState>) -> RyzenAdjResponse {
 }
 
 
+#[cfg(target_os = "windows")]
+#[repr(C)]
+#[derive(Default)]
+#[allow(non_snake_case)]
+struct SYSTEMTIME {
+    wYear: u16,
+    wMonth: u16,
+    wDayOfWeek: u16,
+    wDay: u16,
+    wHour: u16,
+    wMinute: u16,
+    wSecond: u16,
+    wMilliseconds: u16,
+}
+
+#[cfg(target_os = "windows")]
+extern "system" {
+    fn GetLocalTime(lpSystemTime: *mut SYSTEMTIME);
+}
+
+fn get_local_timestamp() -> String {
+    #[cfg(target_os = "windows")]
+    {
+        let mut st = SYSTEMTIME::default();
+        unsafe {
+            GetLocalTime(&mut st);
+        }
+        format!(
+            "{:04}{:02}{:02}_{:02}{:02}{:02}",
+            st.wYear, st.wMonth, st.wDay, st.wHour, st.wMinute, st.wSecond
+        )
+    }
+    #[cfg(not(target_os = "windows"))]
+    {
+        std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map(|d| d.as_secs().to_string())
+            .unwrap_or_else(|_| "unknown".to_string())
+    }
+}
+
 use std::sync::atomic::AtomicU32;
 static HEART_CLICKS: AtomicU32 = AtomicU32::new(0);
 
 #[tauri::command]
-fn register_heart_click() -> Result<String, String> {
+fn register_heart_click(app: tauri::AppHandle) -> Result<String, String> {
     let clicks = HEART_CLICKS.fetch_add(1, Ordering::Relaxed) + 1;
     if clicks >= 9 {
         HEART_CLICKS.store(0, Ordering::Relaxed);
-        
         let logs = core::logger::get_recent_logs();
-        
-        if let Ok(exe_path) = std::env::current_exe() {
-            if let Some(exe_dir) = exe_path.parent() {
-                let log_file = exe_dir.join("victus_deck_debug_logs.txt");
-                if let Err(e) = std::fs::write(&log_file, &logs) {
-                    return Err(format!("Failed to write debug log: {}", e));
-                }
-                return Ok(format!("Logs successfully exported to {:?}", log_file));
+        if let Ok(mut doc_dir) = app.path().document_dir() {
+            doc_dir.push("NTK");
+            if let Err(e) = std::fs::create_dir_all(&doc_dir) {
+                return Err(format!("Failed to create NTK directory: {}", e));
             }
+            let timestamp_str = get_local_timestamp();
+            let log_file = doc_dir.join(format!("debug_logs_{}.txt", timestamp_str));
+            if let Err(e) = std::fs::write(&log_file, &logs) {
+                return Err(format!("Failed to write debug log: {}", e));
+            }
+            return Ok(format!("Logs successfully exported to {}", log_file.to_string_lossy()));
         }
-        return Err("Failed to resolve root installation directory".to_string());
+        return Err("Failed to resolve Documents directory".to_string());
     }
     Ok(format!("Click registered ({}/9)", clicks))
 }
 
+#[tauri::command]
+fn export_debug_logs(app: tauri::AppHandle, is_scheduled: bool, timestamp: String) -> Result<String, String> {
+    let logs = core::logger::get_recent_logs();
+    if let Ok(mut doc_dir) = app.path().document_dir() {
+        doc_dir.push("NTK");
+        if is_scheduled {
+            doc_dir.push("Scheduled");
+        }
+        if let Err(e) = std::fs::create_dir_all(&doc_dir) {
+            return Err(format!("Failed to create directory: {}", e));
+        }
+
+        let filename = if is_scheduled {
+            format!("scheduled_logs_{}.txt", timestamp)
+        } else {
+            format!("debug_logs_{}.txt", timestamp)
+        };
+
+        let log_file = doc_dir.join(filename);
+        if let Err(e) = std::fs::write(&log_file, &logs) {
+            return Err(format!("Failed to write debug log: {}", e));
+        }
+        return Ok(log_file.to_string_lossy().to_string());
+    }
+    Err("Failed to resolve Documents directory".to_string())
+}
+
+#[tauri::command]
+fn set_autostart(enabled: bool) -> Result<(), String> {
+    let exe_path = std::env::current_exe()
+        .map_err(|e| format!("Failed to get current executable path: {}", e))?;
+    let exe_str = exe_path.to_str()
+        .ok_or_else(|| "Invalid path encoding".to_string())?;
+
+    if enabled {
+        let status = std::process::Command::new("reg")
+            .args(&[
+                "add",
+                "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Run",
+                "/v",
+                "NiyanTraK",
+                "/t",
+                "REG_SZ",
+                "/d",
+                &format!("\"{}\" --autostart", exe_str),
+                "/f",
+            ])
+            .status()
+            .map_err(|e| format!("Failed to execute registry command: {}", e))?;
+
+        if !status.success() {
+            return Err("Registry command exited with error status".to_string());
+        }
+    } else {
+        let _ = std::process::Command::new("reg")
+            .args(&[
+                "delete",
+                "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Run",
+                "/v",
+                "NiyanTraK",
+                "/f",
+            ])
+            .status();
+    }
+    Ok(())
+}
+
+#[tauri::command]
+fn get_autostart() -> Result<bool, String> {
+    let output = std::process::Command::new("reg")
+        .args(&[
+            "query",
+            "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Run",
+            "/v",
+            "NiyanTraK",
+        ])
+        .output()
+        .map_err(|e| format!("Failed to execute registry query: {}", e))?;
+
+    Ok(output.status.success())
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    if let Err(e) = tauri::Builder::default()
+    match tauri::Builder::default()
         .manage(AppState::default())
         .invoke_handler(tauri::generate_handler![
             run_profile,
@@ -200,12 +330,17 @@ pub fn run() {
             get_minimize_to_tray,
             register_heart_click,
             set_smart_fan_config,
-            get_smart_fan_config
+            get_smart_fan_config,
+            export_debug_logs,
+            set_autostart,
+            get_autostart,
+            set_export_on_shutdown
         ])
         .setup(|app| {
             // Check command line arguments
             let args: Vec<String> = std::env::args().collect();
             let launch_as_widget = args.contains(&"--widget".to_string());
+            let launch_minimized = args.contains(&"--minimized".to_string()) || args.contains(&"--autostart".to_string());
 
             if launch_as_widget {
                 // Spawn widget window
@@ -224,8 +359,10 @@ pub fn run() {
                 .build()?;
             } else {
                 // Show the main window
-                if let Some(main_window) = app.get_webview_window("main") {
-                    let _ = main_window.show();
+                if !launch_minimized {
+                    if let Some(main_window) = app.get_webview_window("main") {
+                        let _ = main_window.show();
+                    }
                 }
             }
 
@@ -283,7 +420,7 @@ pub fn run() {
                                 let _ = window.hide();
                             } else {
                                 let _ = window.show();
-                                let _ = window.unminimize();
+                                  let _ = window.unminimize();
                                 let _ = window.set_focus();
                             }
                         }
@@ -303,8 +440,27 @@ pub fn run() {
                 }
             }
         })
-        .run(tauri::generate_context!())
+        .build(tauri::generate_context!())
     {
-        eprintln!("Tauri error: {:?}", e);
+        Ok(app) => {
+            app.run(|app_handle, event| {
+                if let tauri::RunEvent::Exit = event {
+                    let state = app_handle.state::<AppState>();
+                    if state.export_on_shutdown.load(Ordering::Relaxed) {
+                        let logs = core::logger::get_recent_logs();
+                        if let Ok(mut doc_dir) = app_handle.path().document_dir() {
+                            doc_dir.push("NTK");
+                            let _ = std::fs::create_dir_all(&doc_dir);
+                            let timestamp_str = get_local_timestamp();
+                            let log_file = doc_dir.join(format!("shutdown_debug_logs_{}.txt", timestamp_str));
+                            let _ = std::fs::write(&log_file, &logs);
+                        }
+                    }
+                }
+            });
+        }
+        Err(e) => {
+            eprintln!("Tauri build error: {:?}", e);
+        }
     }
 }

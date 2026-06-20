@@ -229,6 +229,12 @@ import { FormsModule } from '@angular/forms';
       background: rgba(245, 158, 11, 0.1);
       border-color: rgba(245, 158, 11, 0.2);
     }
+    @media (max-width: 750px) {
+      .readout-big { font-size: 18px !important; }
+      .readout-sub { font-size: 11px !important; }
+      .section-title { font-size: 11px !important; }
+      .segment-btn { font-size: 9px !important; padding: 3px 6px !important; }
+    }
   `]
 })
 export class FanControlComponent {

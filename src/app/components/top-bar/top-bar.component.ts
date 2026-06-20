@@ -16,6 +16,7 @@ import { CommonModule } from '@angular/common';
 
       <!-- DYNAMIC ISLAND CAPSULE -->
       <div class="dynamic-island-container">
+        <!-- Main Status Island -->
         <div class="dynamic-island" [class.dynamic-island--active]="activeToast" [class.dynamic-island--success]="activeToast?.type === 'success'" [class.dynamic-island--error]="activeToast?.type === 'error'" [class.dynamic-island--info]="activeToast?.type === 'info'">
           <ng-container *ngIf="!activeToast; else toastTemplate">
             <!-- Idle state: displays active profile -->
@@ -36,6 +37,12 @@ import { CommonModule } from '@angular/common';
             </span>
             <span class="island-message-toast">{{ activeToast.message }}</span>
           </ng-template>
+        </div>
+
+        <!-- Twin Warning Island -->
+        <div class="dynamic-island dynamic-island--warning" *ngIf="unsavedChanges">
+          <span class="island-icon warning-pulse">⚠️</span>
+          <span class="island-label warning-text">UNSAVED CHANGES</span>
         </div>
       </div>
 
@@ -81,6 +88,7 @@ import { CommonModule } from '@angular/common';
       align-items: center;
       z-index: 1000;
       pointer-events: none;
+      gap: 12px;
     }
     .dynamic-island {
       pointer-events: auto;
@@ -118,6 +126,39 @@ import { CommonModule } from '@angular/common';
       background: rgba(15, 15, 17, 0.95);
       color: #e0e0e0;
       animation: island-spring 350ms cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
+    
+    .dynamic-island--warning {
+      border-color: rgba(245, 158, 11, 0.4);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.5), inset 0 1px 1px rgba(255,255,255,0.03), 0 0 12px rgba(245, 158, 11, 0.15);
+      animation: island-entry 350ms cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
+    
+    .warning-pulse {
+      color: #f59e0b;
+      animation: warning-blink 1.5s infinite ease-in-out;
+      display: inline-block;
+    }
+    
+    .warning-text {
+      color: #f59e0b;
+      font-weight: 700;
+    }
+    
+    @keyframes island-entry {
+      0% {
+        opacity: 0;
+        transform: scale(0.8) translateY(-10px);
+      }
+      100% {
+        opacity: 1;
+        transform: scale(1) translateY(0);
+      }
+    }
+    
+    @keyframes warning-blink {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.6; transform: scale(1.1); }
     }
     
     .dynamic-island--success {
@@ -179,4 +220,5 @@ export class TopBarComponent {
   @Input() activeProfileLabel: string = '';
   @Input() activeToast: any = null;
   @Input() cpuName: string = '';
+  @Input() unsavedChanges: boolean = false;
 }

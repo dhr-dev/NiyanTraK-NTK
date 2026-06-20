@@ -16,6 +16,8 @@
         "title": "NiyanTraK",
         "width": 800,
         "height": 600,
+        "minWidth": 450,
+        "minHeight": 450,
         "visible": false,
         "backgroundColor": "#0d0f14"
       }

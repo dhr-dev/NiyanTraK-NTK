@@ -7,10 +7,7 @@ import { FormsModule } from '@angular/forms';
   standalone: true,
   imports: [CommonModule, FormsModule],
   template: `
-    <div class="profiles-drawer" [class.profiles-drawer--open]="open">
-      <div class="drawer-header">
-        <span class="drawer-title">Profiles</span>
-      </div>
+    <div class="profiles-drawer" [class.profiles-drawer--open]="open" [class.profiles-drawer--non-sticky]="!isSticky">
       <div class="drawer-cards-wrapper" (mouseenter)="checkOverflow(cardsContainer)">
         <button *ngIf="hasOverflow" class="scroll-btn scroll-btn--left" (click)="cardsContainer.scrollBy({ left: -240, behavior: 'smooth' })" title="Scroll left">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="14" height="14">
@@ -70,9 +67,8 @@ import { FormsModule } from '@angular/forms';
   styles: [`
     /* ─── PROFILES DRAWER ─── */
     .profiles-drawer {
-      background: #171717;
-      border: 1px solid #242424;
-      border-radius: 14px;
+      background: transparent;
+      border: none;
       margin: 0 59px 0 16px;
       flex-shrink: 0;
       max-height: 0;
@@ -81,11 +77,14 @@ import { FormsModule } from '@angular/forms';
       transition: max-height 300ms cubic-bezier(0.4,0,0.2,1), opacity 200ms ease, margin 300ms cubic-bezier(0.4,0,0.2,1), padding 200ms ease;
     }
     .profiles-drawer--open {
-      max-height: 130px;
+      max-height: 100px;
       opacity: 1;
-      margin: 16px 59px 0 16px;
-      padding: 4px 0;
-      box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+      margin: 8px 59px 0 16px;
+      padding: 0;
+    }
+    .profiles-drawer--non-sticky {
+      margin-left: 0 !important;
+      margin-right: 0 !important;
     }
     .drawer-header {
       display: flex;
@@ -138,7 +137,7 @@ import { FormsModule } from '@angular/forms';
     .drawer-cards {
       display: flex;
       gap: 8px;
-      padding: 0 16px 12px;
+      padding: 4px 0;
       overflow-x: auto;
     }
     .drawer-cards::-webkit-scrollbar { display: none; }
@@ -278,6 +277,7 @@ export class ProfilesDrawerComponent {
   @Input() open: boolean = false;
   @Input() currentProfile: string = '';
   @Input() profiles: any[] = [];
+  @Input() isSticky: boolean = true;
   @Output() selectProfile = new EventEmitter<string>();
   @Output() savePreset = new EventEmitter<string>();
   @Output() deletePreset = new EventEmitter<string>();

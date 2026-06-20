@@ -8,12 +8,15 @@ import { FormsModule } from '@angular/forms';
   imports: [CommonModule, FormsModule],
   template: `
     <div class="card">
-      <h2 class="section-title">CPU Power & Thermal Limits</h2>
+      <div class="card-header" style="display: flex; align-items: center; justify-content: space-between; width: 100%; margin-bottom: 4px;">
+        <h2 class="section-title" style="margin: 0;">CPU Power & Limits</h2>
+        <button class="apply-btn-inline" (click)="apply.emit()">Apply</button>
+      </div>
       <div class="tdp-section">
         <div class="tdp-display-row">
           <div class="tdp-mode-stack">
             <span class="tdp-mode-badge">{{ mode === 'bed' ? 'BED' : mode.toUpperCase() }}</span>
-            <span class="tdp-mode-sub">Active Mode</span>
+            <span class="tdp-mode-sub">Active Profile</span>
           </div>
           <span class="tdp-value">{{ tdp }}W</span>
         </div>
@@ -27,11 +30,11 @@ import { FormsModule } from '@angular/forms';
         </div>
       </div>
 
-      <div class="tdp-section" style="margin-top: 8px;">
+      <div class="tdp-section" style="margin-top: 16px;">
         <div class="tdp-display-row">
           <div class="tdp-mode-stack">
             <span class="tdp-mode-badge">TEMP TARGET</span>
-            <span class="tdp-mode-sub">Thermal Throttle</span>
+            <span class="tdp-mode-sub">Thermal Limit</span>
           </div>
           <span class="tdp-value">{{ tempLimit }}°C</span>
         </div>
@@ -44,8 +47,6 @@ import { FormsModule } from '@angular/forms';
           <span>50°C</span><span>95°C</span>
         </div>
       </div>
-
-      <button class="apply-btn" (click)="apply.emit()">Apply Limits</button>
     </div>
   `,
   styles: [`
@@ -90,29 +91,32 @@ import { FormsModule } from '@angular/forms';
     .section-title { font-size: 13px; font-weight: 600; color: #fff; letter-spacing: 0.02em; }
 
     /* ─── APPLY BUTTON ─── */
-    .apply-btn {
-      width: 100%; height: 34px;
+    .apply-btn-inline {
       background: rgba(59, 130, 246, 0.12);
       border: 1px solid rgba(59, 130, 246, 0.35);
-      border-radius: 8px; color: #3b82f6;
-      font-size: 12px; font-weight: 600;
+      border-radius: 6px;
+      color: #3b82f6;
+      font-size: 11px;
+      font-weight: 600;
+      padding: 3px 10px;
       transition: all 200ms ease;
-      display: flex; align-items: center; justify-content: center;
-      margin-top: auto;
+      cursor: pointer;
       backdrop-filter: blur(4px);
       -webkit-backdrop-filter: blur(4px);
-      box-shadow: 0 4px 12px rgba(59, 130, 246, 0.1);
     }
-    .apply-btn:hover:not(:disabled) {
+    .apply-btn-inline:hover:not(:disabled) {
       background: rgba(59, 130, 246, 0.22);
       border-color: rgba(59, 130, 246, 0.5);
       color: #60a5fa;
-      box-shadow: 0 4px 16px rgba(59, 130, 246, 0.25);
+      box-shadow: 0 2px 8px rgba(59, 130, 246, 0.2);
     }
-    .apply-btn:active:not(:disabled) {
-      transform: scale(0.98);
+    .apply-btn-inline:active:not(:disabled) {
+      transform: scale(0.96);
     }
-    .apply-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+    .apply-btn-inline:disabled {
+      opacity: 0.3;
+      cursor: not-allowed;
+    }
 
     /* ─── SLIDER ─── */
     .range-slider {
@@ -161,10 +165,16 @@ import { FormsModule } from '@angular/forms';
     .tdp-section { display: flex; flex-direction: column; gap: 8px; }
     .tdp-display-row { display: flex; align-items: center; justify-content: space-between; }
     .tdp-mode-stack { display: flex; flex-direction: column; gap: 1px; }
-    .tdp-mode-badge { font-size: 12.5px; font-weight: 700; color: #3b82f6; background: rgba(59, 130, 246, 0.1); padding: 2px 6px; border-radius: 4px; text-transform: uppercase; letter-spacing: 0.08em; display: inline-block; width: fit-content; }
+    .tdp-mode-badge { font-size: 10px; font-weight: 700; color: #3b82f6; background: rgba(59, 130, 246, 0.1); padding: 2px 6px; border-radius: 4px; text-transform: uppercase; letter-spacing: 0.08em; display: inline-block; width: fit-content; }
     .tdp-mode-sub { font-size: 12px; color: #aaa; font-style: italic; }
     .tdp-value { font-size: 26px; font-weight: 600; color: #fff; line-height: 1; text-shadow: 0 0 12px rgba(59, 130, 246, 0.25); }
     .tdp-range-labels { display: flex; justify-content: space-between; font-size: 12px; color: #bbb; }
+    @media (max-width: 750px) {
+      .tdp-value { font-size: 20px !important; }
+      .tdp-mode-sub { font-size: 10px !important; }
+      .section-title { font-size: 11px !important; }
+      .apply-btn-inline { font-size: 9px !important; padding: 2px 6px !important; }
+    }
   `]
 })
 export class CPUPowerPanelComponent {

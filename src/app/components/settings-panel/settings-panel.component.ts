@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, Output, EventEmitter, HostListener } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { invoke } from '@tauri-apps/api/core';
@@ -13,6 +13,10 @@ export interface WidgetSettings {
 
 export interface AppSettings {
   minimizeToTray: boolean;
+  startOnStartup: boolean;
+  logExportSchedule: 'disabled' | '1h' | '6h' | '24h' | 'custom';
+  customLogExportHours: number;
+  exportOnShutdown: boolean;
   widget: WidgetSettings;
 }
 
@@ -44,6 +48,103 @@ export interface AppSettings {
             </div>
             <label class="switch-container">
               <input type="checkbox" [(ngModel)]="settings.minimizeToTray" (change)="saveSettings()">
+              <span class="switch-slider"></span>
+            </label>
+          </div>
+
+          <div class="setting-divider"></div>
+
+          <div class="setting-item">
+            <div class="setting-info">
+              <span class="setting-label">Start NiyanTraK on OS Startup</span>
+              <span class="setting-desc">Launch the application hidden in the system tray automatically when your computer starts.</span>
+            </div>
+            <label class="switch-container">
+              <input type="checkbox" [(ngModel)]="settings.startOnStartup" (change)="toggleAutostart()">
+              <span class="switch-slider"></span>
+            </label>
+          </div>
+        </section>
+
+        <!-- DIAGNOSTIC LOGS OPTIONS -->
+        <section class="settings-card">
+          <h3 class="card-title">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" class="card-icon" style="stroke-linecap: round; stroke-linejoin: round;">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+              <polyline points="14 2 14 8 20 8"></polyline>
+              <line x1="16" y1="13" x2="8" y2="13"></line>
+              <line x1="16" y1="17" x2="8" y2="17"></line>
+              <polyline points="10 9 9 9 8 9"></polyline>
+            </svg>
+            Diagnostic Logs
+          </h3>
+
+          <div class="setting-item">
+            <div class="setting-info">
+              <span class="setting-label">Export Debug Logs</span>
+              <span class="setting-desc">Generate a debug log file in Documents/NTK folder and copy its path to your clipboard.</span>
+            </div>
+            <button class="btn-launch-widget" (click)="exportDebugLogs()">
+              Export Now
+            </button>
+          </div>
+
+          <div class="setting-divider"></div>
+
+          <div class="setting-item">
+            <div class="setting-info">
+              <span class="setting-label">Scheduled Auto-Export</span>
+              <span class="setting-desc">Automatically export debug logs periodically. Logs will be stored in Documents/NTK/Scheduled.</span>
+            </div>
+            <div class="custom-select-container" (click)="$event.stopPropagation()">
+              <div class="custom-select-trigger" (click)="toggleDropdown()" [class.active]="dropdownOpen">
+                <span>{{ getSelectedLabel() }}</span>
+                <svg class="custom-select-arrow" [class.open]="dropdownOpen" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <polyline points="6 9 12 15 18 9"></polyline>
+                </svg>
+              </div>
+              <div class="custom-select-dropdown" *ngIf="dropdownOpen">
+                <div class="custom-select-option" 
+                     *ngFor="let opt of dropdownOptions" 
+                     [class.selected]="settings.logExportSchedule === opt.value"
+                     (click)="selectOption(opt.value)">
+                  {{ opt.label }}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="setting-item" *ngIf="settings.logExportSchedule === 'custom'">
+            <div class="setting-info">
+              <span class="setting-label">Custom Schedule Duration</span>
+              <span class="setting-desc">Specify the interval in hours between automatic log exports.</span>
+            </div>
+            <div class="input-container">
+              <input type="number" min="1" max="168" [(ngModel)]="settings.customLogExportHours" (change)="onCustomHoursChange()" class="settings-input-num" />
+              <span class="unit-label">hours</span>
+            </div>
+          </div>
+
+          <ng-container *ngIf="settings.logExportSchedule !== 'disabled'">
+            <div class="setting-divider"></div>
+            <div class="setting-item">
+              <div class="setting-info">
+                <span class="setting-label">Last Scheduled Export</span>
+                <span class="setting-desc">The timestamp of the most recent automatic log save.</span>
+              </div>
+              <span class="unit-label" style="font-weight: 600; color: #fff;">{{ lastExportTimeLabel }}</span>
+            </div>
+          </ng-container>
+
+          <div class="setting-divider"></div>
+
+          <div class="setting-item">
+            <div class="setting-info">
+              <span class="setting-label">Export Logs on Shutdown</span>
+              <span class="setting-desc">Automatically export debug logs to Documents/NTK on application close or OS shutdown.</span>
+            </div>
+            <label class="switch-container">
+              <input type="checkbox" [(ngModel)]="settings.exportOnShutdown" (change)="toggleExportOnShutdown()">
               <span class="switch-slider"></span>
             </label>
           </div>
@@ -275,11 +376,140 @@ export interface AppSettings {
       transform: translateX(16px);
       background-color: #3b82f6;
     }
+    .custom-select-container {
+      position: relative;
+      width: 150px;
+      user-select: none;
+    }
+    .custom-select-trigger {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: #18181a;
+      padding: 6px 12px;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 8px;
+      color: #e0e0e0;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 200ms ease;
+      box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.5);
+    }
+    .custom-select-trigger:hover {
+      border-color: rgba(59, 130, 246, 0.4);
+      background-color: #1f1f22;
+      box-shadow: 0 0 8px rgba(59, 130, 246, 0.1);
+    }
+    .custom-select-trigger.active {
+      border-color: #3b82f6;
+      background-color: #1f1f22;
+      box-shadow: 0 0 12px rgba(59, 130, 246, 0.25);
+    }
+    .custom-select-arrow {
+      width: 14px;
+      height: 14px;
+      color: #888888;
+      transition: transform 200ms ease;
+    }
+    .custom-select-arrow.open {
+      transform: rotate(180deg);
+      color: #3b82f6;
+    }
+    .custom-select-dropdown {
+      position: absolute;
+      top: calc(100% + 4px);
+      left: 0;
+      right: 0;
+      background: rgba(24, 24, 26, 0.95);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 8px;
+      padding: 4px;
+      z-index: 100;
+      backdrop-filter: blur(12px);
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+      animation: dropdown-fade-in 150ms ease-out;
+    }
+    @keyframes dropdown-fade-in {
+      from { opacity: 0; transform: translateY(-4px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .custom-select-option {
+      padding: 6px 10px;
+      border-radius: 6px;
+      color: #aaaaaa;
+      font-size: 12px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 150ms ease;
+    }
+    .custom-select-option:hover {
+      background: rgba(59, 130, 246, 0.15);
+      color: #ffffff;
+    }
+    .custom-select-option.selected {
+      background: #1a2a3a;
+      color: #3b82f6;
+      font-weight: 600;
+      border: 1px solid rgba(59, 130, 246, 0.2);
+    }
+    .settings-input-num {
+      background: transparent;
+      border: none;
+      color: #3b82f6;
+      padding: 4px 6px;
+      font-size: 12px;
+      font-weight: 700;
+      width: 48px;
+      text-align: center;
+      outline: none;
+      box-shadow: none;
+    }
+    .settings-input-num::-webkit-outer-spin-button,
+    .settings-input-num::-webkit-inner-spin-button {
+      -webkit-appearance: none;
+      margin: 0;
+    }
+    .settings-input-num[type=number] {
+      -moz-appearance: textfield;
+    }
+    .input-container {
+      display: flex;
+      align-items: center;
+      background: #18181a;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 8px;
+      padding: 2px 10px 2px 2px;
+      gap: 6px;
+      transition: all 200ms ease;
+      box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.5);
+    }
+    .input-container:hover {
+      border-color: rgba(59, 130, 246, 0.4);
+      box-shadow: 0 0 8px rgba(59, 130, 246, 0.1);
+    }
+    .input-container:focus-within {
+      border-color: #3b82f6;
+      box-shadow: 0 0 12px rgba(59, 130, 246, 0.25);
+    }
+    .unit-label {
+      font-size: 10px;
+      color: #666;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
   `]
 })
 export class SettingsPanelComponent implements OnInit {
+  @Output() showToast = new EventEmitter<{ message: string; type: 'success' | 'error' | 'info' }>();
+
   settings: AppSettings = {
     minimizeToTray: false,
+    startOnStartup: false,
+    logExportSchedule: 'disabled',
+    customLogExportHours: 1,
+    exportOnShutdown: false,
     widget: {
       showTemp: true,
       showTdp: true,
@@ -289,10 +519,53 @@ export class SettingsPanelComponent implements OnInit {
   };
 
   isWidgetRunning = false;
+  lastExportTimeLabel = 'Never';
+
+  dropdownOpen = false;
+  dropdownOptions: { value: AppSettings['logExportSchedule']; label: string }[] = [
+    { value: 'disabled', label: 'Disabled' },
+    { value: '1h', label: 'Every 1 Hour' },
+    { value: '6h', label: 'Every 6 Hours' },
+    { value: '24h', label: 'Every 24 Hours' },
+    { value: 'custom', label: 'Custom Hours' }
+  ];
+
+  toggleDropdown() {
+    this.dropdownOpen = !this.dropdownOpen;
+  }
+
+  selectOption(value: AppSettings['logExportSchedule']) {
+    this.settings.logExportSchedule = value;
+    this.dropdownOpen = false;
+    this.onLogScheduleChange();
+  }
+
+  getSelectedLabel(): string {
+    const found = this.dropdownOptions.find(opt => opt.value === this.settings.logExportSchedule);
+    return found ? found.label : 'Disabled';
+  }
+
+  @HostListener('document:click')
+  onDocumentClick() {
+    this.dropdownOpen = false;
+  }
 
   async ngOnInit() {
     this.loadSettings();
     this.checkWidgetStatus();
+    this.updateLastExportTimeLabel();
+    
+    // Sync autostart status with OS registry
+    try {
+      this.settings.startOnStartup = await invoke<boolean>('get_autostart');
+    } catch (e) {
+      console.error('Failed to get autostart status from OS', e);
+    }
+
+    // Listen to manual or scheduled export refresh times
+    window.addEventListener('refresh_last_export_time', () => {
+      this.updateLastExportTimeLabel();
+    });
     
     // Listen to layout changes in real-time (e.g. when widget panels are hidden)
     try {
@@ -309,7 +582,20 @@ export class SettingsPanelComponent implements OnInit {
     try {
       const stored = localStorage.getItem('niyantrak_settings');
       if (stored) {
-        this.settings = JSON.parse(stored);
+        const parsed = JSON.parse(stored);
+        if (parsed) {
+          if (parsed.minimizeToTray !== undefined) this.settings.minimizeToTray = parsed.minimizeToTray;
+          if (parsed.startOnStartup !== undefined) this.settings.startOnStartup = parsed.startOnStartup;
+          if (parsed.logExportSchedule !== undefined) this.settings.logExportSchedule = parsed.logExportSchedule;
+          if (parsed.customLogExportHours !== undefined) this.settings.customLogExportHours = parsed.customLogExportHours;
+          if (parsed.exportOnShutdown !== undefined) this.settings.exportOnShutdown = parsed.exportOnShutdown;
+          if (parsed.widget) {
+            if (parsed.widget.showTemp !== undefined) this.settings.widget.showTemp = parsed.widget.showTemp;
+            if (parsed.widget.showTdp !== undefined) this.settings.widget.showTdp = parsed.widget.showTdp;
+            if (parsed.widget.showFan !== undefined) this.settings.widget.showFan = parsed.widget.showFan;
+            if (parsed.widget.showProfiles !== undefined) this.settings.widget.showProfiles = parsed.widget.showProfiles;
+          }
+        }
       }
     } catch (e) {
       console.error('Failed to load settings', e);
@@ -324,6 +610,76 @@ export class SettingsPanelComponent implements OnInit {
     } catch (e) {
       console.error('Failed to save settings', e);
     }
+  }
+
+  async toggleAutostart() {
+    try {
+      await invoke('set_autostart', { enabled: this.settings.startOnStartup });
+      this.saveSettings();
+      this.showToast.emit({ message: this.settings.startOnStartup ? 'Autostart enabled!' : 'Autostart disabled!', type: 'success' });
+    } catch (e) {
+      this.showToast.emit({ message: 'Failed to update autostart: ' + e, type: 'error' });
+      this.settings.startOnStartup = !this.settings.startOnStartup;
+    }
+  }
+
+  getFormattedTimestamp(): string {
+    const now = new Date();
+    const pad = (n: number) => String(n).padStart(2, '0');
+    return `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}_${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`;
+  }
+
+  async exportDebugLogs() {
+    try {
+      this.showToast.emit({ message: 'Exporting debug logs...', type: 'info' });
+      const timestampStr = this.getFormattedTimestamp();
+      const path = await invoke<string>('export_debug_logs', { isScheduled: false, timestamp: timestampStr });
+      
+      try {
+        await navigator.clipboard.writeText(path);
+        this.showToast.emit({ message: `Logs exported & path copied to clipboard: ${path}`, type: 'success' });
+      } catch (err) {
+        this.showToast.emit({ message: `Logs successfully exported to ${path}`, type: 'success' });
+      }
+    } catch (e) {
+      this.showToast.emit({ message: 'Failed to export debug logs: ' + e, type: 'error' });
+    }
+  }
+
+  onLogScheduleChange() {
+    this.saveSettings();
+    window.dispatchEvent(new Event('sync_log_schedule'));
+    this.showToast.emit({ message: 'Scheduled log export updated!', type: 'success' });
+  }
+
+  onCustomHoursChange() {
+    this.saveSettings();
+    window.dispatchEvent(new Event('sync_log_schedule'));
+    this.showToast.emit({ message: 'Schedule custom interval updated!', type: 'success' });
+  }
+
+  async toggleExportOnShutdown() {
+    try {
+      this.saveSettings();
+      await invoke('set_export_on_shutdown', { enabled: this.settings.exportOnShutdown });
+      this.showToast.emit({ message: this.settings.exportOnShutdown ? 'Export on shutdown enabled!' : 'Export on shutdown disabled!', type: 'success' });
+    } catch (e) {
+      this.showToast.emit({ message: 'Failed to sync shutdown setting: ' + e, type: 'error' });
+      this.settings.exportOnShutdown = !this.settings.exportOnShutdown;
+      this.saveSettings();
+    }
+  }
+
+  updateLastExportTimeLabel() {
+    const val = localStorage.getItem('last_scheduled_export_time');
+    if (val) {
+      const ts = parseInt(val, 10);
+      if (!isNaN(ts) && ts > 0) {
+        this.lastExportTimeLabel = new Date(ts).toLocaleString();
+        return;
+      }
+    }
+    this.lastExportTimeLabel = 'Never';
   }
 
   async checkWidgetStatus() {
