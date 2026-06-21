@@ -1,8 +1,3 @@
-use std::process::Command;
-
-#[cfg(windows)]
-use std::os::windows::process::CommandExt;
-
 pub fn apply_fan_mode(mode: &str) -> String {
     // 1. Resolve relative to the current running executable (works in production installations)
     let mut resolved_script = std::env::current_exe()
@@ -33,32 +28,16 @@ pub fn apply_fan_mode(mode: &str) -> String {
         _ => "30:30",
     };
 
-    let mut cmd = Command::new("powershell");
-    cmd.args([
-        "-ExecutionPolicy",
-        "Bypass",
-        "-File",
-        &script_path,
-        "-SetFanLevel",
-        level,
-    ]);
+    let full_command = format!("& '{}' -SetFanLevel {}", script_path, level);
 
-    #[cfg(windows)]
-    cmd.creation_flags(0x08000000);
-
-    let output = cmd.output();
-
-    match output {
-        Ok(o) => {
-            let stdout = String::from_utf8_lossy(&o.stdout);
-            let stderr = String::from_utf8_lossy(&o.stderr);
-
-            let log_msg = format!("Fan Mode - Applied Level [{}], Mode [{}], stdout: {}, stderr: {}", level, mode, stdout.trim(), stderr.trim());
+    match crate::core::ps_session::run_command(&full_command) {
+        Ok(output_str) => {
+            let log_msg = format!("Fan Mode - Applied Level [{}], Mode [{}], output: {}", level, mode, output_str.trim());
             crate::core::logger::add_log(&log_msg);
 
             format!(
-                "fan mode: {}\nlevel: {}\nstdout:\n{}\nstderr:\n{}",
-                mode, level, stdout, stderr
+                "fan mode: {}\nlevel: {}\nstdout:\n{}\nstderr:\n",
+                mode, level, output_str
             )
         }
         Err(e) => {
@@ -229,4 +208,4 @@ pub fn process_smart_fan(temp: f64, state: &mut SmartFanState) -> (u32, f64, boo
     }
 
     (state.last_applied_level, decision_temp, is_instant, applied_change)
-}
+}
