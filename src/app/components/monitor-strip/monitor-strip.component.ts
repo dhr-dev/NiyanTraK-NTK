@@ -35,7 +35,7 @@ export interface ShowLineConfig {
               </div>
             </div>
             
-            <div class="monitor-inline-row">
+             <div class="monitor-inline-row">
               <!-- Left: Wattage numbers column -->
               <div class="live-wattage-col">
                 <div class="live-watt-row" style="display: flex; align-items: baseline; gap: 4px;">
@@ -58,15 +58,12 @@ export interface ShowLineConfig {
 
               <!-- Middle: SVG graph -->
               <div class="graph-wrap graph-wrap--inline" style="">
-                <div class="graph-tick-labels" aria-hidden="true">
-                  <span *ngFor="let t of powerTickData" class="gtick-lbl" [style.top.%]="(t.y / 60) * 100">{{ t.label }}</span>
-                </div>
-                <div class="graph-container graph-container--inline">
+                <div class="graph-container graph-container--inline" style="position: relative;">
                   <!-- Absolute HTML Axis Labels Overlay -->
-                  <div class="graph-y-axis graph-y-axis-cpu" [style.opacity]="(showLine.fastPpt || showLine.slowPpt || showLine.stapm) ? 1 : 0.5">
-                    <span class="axis-val">{{ powerMaxLabel }}</span>
-                    <span class="axis-val">{{ powerMidLabel }}</span>
-                    <span class="axis-val">0W</span>
+                  <div class="graph-y-axis graph-y-axis-cpu" [style.opacity]="(showLine.fastPpt || showLine.slowPpt || showLine.stapm) ? 1 : 0.5" style="display: block; position: absolute; inset: 0; padding: 6px 0;">
+                    <span class="axis-val" style="position: absolute; top: 6px; font-size: 9.5px;">{{ powerMaxLabel }}</span>
+                    <span class="axis-val" style="position: absolute; transform: translateY(-50%); transition: top 500ms ease; font-weight: 500; font-size: 16px; left: 8px; color: #ffff41ff; background: rgba(18, 18, 18, 0.85); border: 1px solid rgba(59, 130, 246, 0.2); border-radius: 4px; padding: 2px 6px; box-shadow: 0 2px 5px rgba(0,0,0,0.5); backdrop-filter: blur(2px); text-decoration: overline;" [style.top.%]="powerMidLabelPos">{{ powerMidLabel }}</span>
+                    <span class="axis-val" style="position: absolute; bottom: 6px; font-size: 9.5px;">0W</span>
                   </div>
 
                   <svg class="monitor-graph" viewBox="0 0 300 60" preserveAspectRatio="none">
@@ -77,8 +74,9 @@ export interface ShowLineConfig {
                       </linearGradient>
                     </defs>
                     <!-- Y-axis tick marks every 10W -->
-                    <line *ngFor="let t of powerTickData" x1="0" [attr.y1]="t.y" x2="6" [attr.y2]="t.y" class="y-tick-line" />
+                    <line *ngFor="let t of powerTickData" x1="0"  [attr.y1]="t.y" x2="6" [attr.y2]="t.y" class="y-tick-line" />
                     <line *ngFor="let t of powerTickData" x1="294" [attr.y1]="t.y" x2="300" [attr.y2]="t.y" class="y-tick-line" />
+                    
                     <!-- Limits Grid Lines -->
                     <line *ngIf="showLine.fastPpt" x1="0" [attr.y1]="getPowerY(metrics.fastPptLimit)" x2="300" [attr.y2]="getPowerY(metrics.fastPptLimit)" class="limit-line limit-line-fast" />
                     <line *ngIf="showLine.slowPpt" x1="0" [attr.y1]="getPowerY(metrics.slowPptLimit)" x2="300" [attr.y2]="getPowerY(metrics.slowPptLimit)" class="limit-line limit-line-slow" />
@@ -88,9 +86,16 @@ export interface ShowLineConfig {
                     <path *ngIf="showLine.fastPpt" [attr.d]="fastAreaPath" fill="url(#powerGrad)"></path>
                     <path *ngIf="showLine.fastPpt" [attr.d]="fastLinePath" stroke="#22c55e" stroke-width="1.5" fill="none" stroke-linecap="round"></path>
                   </svg>
-                </div>
-                <div class="graph-tick-labels graph-tick-labels--right" aria-hidden="true">
-                  <span *ngFor="let t of powerTickData" class="gtick-lbl gtick-lbl--right" [style.top.%]="(t.y / 60) * 100">{{ t.label }}</span>
+
+                  <!-- Left Tick Labels Overlay -->
+                  <div class="graph-tick-labels-overlay" aria-hidden="true">
+                    <span *ngFor="let t of powerTickData" class="gtick-lbl" [style.top.%]="(t.y / 60) * 100">{{ t.label }}</span>
+                  </div>
+
+                  <!-- Right Tick Labels Overlay -->
+                  <div class="graph-tick-labels-overlay graph-tick-labels-overlay--right" aria-hidden="true">
+                    <span *ngFor="let t of powerTickData" class="gtick-lbl gtick-lbl--right" [style.top.%]="(t.y / 60) * 100">{{ t.label }}</span>
+                  </div>
                 </div>
               </div>
 
@@ -161,16 +166,13 @@ export interface ShowLineConfig {
 
             <!-- Real-time SVG Temperature Graph -->
             <div class="graph-wrap">
-              <div class="graph-tick-labels" aria-hidden="true">
-                <span *ngFor="let t of tempTickData" class="gtick-lbl" [style.top.%]="(t.y / 60) * 100">{{ t.label }}</span>
-              </div>
-              <div class="graph-container">
-                <!-- Absolute HTML Axis Labels Overlay -->
-                <div class="graph-y-axis" [style.opacity]="(showLine.temp || showLine.apuSkin || showLine.dgpuSkin) ? 1 : 0.5">
-                  <span class="axis-val">{{ tempMaxLabel }}</span>
-                  <span class="axis-val">{{ tempMidLabel }}</span>
-                  <span class="axis-val">30°C</span>
-                </div>
+              <div class="graph-container" style="position: relative;">
+                 <!-- Absolute HTML Axis Labels Overlay -->
+                 <div class="graph-y-axis" [style.opacity]="(showLine.temp || showLine.apuSkin || showLine.dgpuSkin) ? 1 : 0.5" style="display: block; position: absolute; inset: 0; left: 26px !important; padding: 6px 0;">
+                   <span class="axis-val" style="position: absolute; top: 6px; font-size: 9.5px;">{{ tempMaxLabel }}</span>
+                   <span class="axis-val" style="position: absolute; transform: translateY(-50%); transition: top 500ms ease; font-weight: 500; font-size: 16px; left: 8px; color: #ffff41ff; background: rgba(18, 18, 18, 0.85); border: 1px solid rgba(59, 130, 246, 0.2); border-radius: 4px; padding: 2px 6px; box-shadow: 0 2px 5px rgba(0,0,0,0.5); backdrop-filter: blur(2px); text-decoration: overline;" [style.top.%]="tempMidLabelPos">{{ tempMidLabel }}</span>
+                   <span class="axis-val" style="position: absolute; bottom: 6px; font-size: 9.5px;">30°C</span>
+                 </div>
 
                 <svg class="monitor-graph" viewBox="0 0 300 60" preserveAspectRatio="none">
                   <defs>
@@ -191,9 +193,16 @@ export interface ShowLineConfig {
                   <path *ngIf="showLine.apuSkin" [attr.d]="apuLinePath" stroke="#a855f7" stroke-width="1.2" fill="none" stroke-linecap="round" style="opacity: 0.85;"></path>
                   <path *ngIf="metrics.dgpuSkin > 0 && showLine.dgpuSkin" [attr.d]="dgpuLinePath" stroke="#06b6d4" stroke-width="1.2" fill="none" stroke-linecap="round" style="opacity: 0.85;"></path>
                 </svg>
-              </div>
-              <div class="graph-tick-labels graph-tick-labels--right" aria-hidden="true">
-                <span *ngFor="let t of tempTickData" class="gtick-lbl gtick-lbl--right" [style.top.%]="(t.y / 60) * 100">{{ t.label }}</span>
+
+                <!-- Left Tick Labels Overlay -->
+                <div class="graph-tick-labels-overlay" aria-hidden="true">
+                  <span *ngFor="let t of tempTickData" class="gtick-lbl" [style.top.%]="(t.y / 60) * 100">{{ t.label }}</span>
+                </div>
+
+                <!-- Right Tick Labels Overlay -->
+                <div class="graph-tick-labels-overlay graph-tick-labels-overlay--right" aria-hidden="true">
+                  <span *ngFor="let t of tempTickData" class="gtick-lbl gtick-lbl--right" [style.top.%]="(t.y / 60) * 100">{{ t.label }}</span>
+                </div>
               </div>
             </div>
           </div>
@@ -224,36 +233,40 @@ export interface ShowLineConfig {
             </div>
 
             <!-- Real-time SVG Fan Speed Graph -->
-            <div class="graph-wrap">
-              <div class="graph-tick-labels" aria-hidden="true">
-                <span *ngFor="let t of fanRpmTickData" class="gtick-lbl" [style.top.%]="(t.y / 60) * 100">{{ t.label }}</span>
-              </div>
-              <div class="graph-container">
-                <!-- Absolute HTML Axis Labels Overlay -->
-                <div class="graph-y-axis" [style.opacity]="showLine.fan ? 1 : 0.5">
-                  <span class="axis-val">5700</span>
-                  <span class="axis-val">3200</span>
-                  <span class="axis-val">0 RPM</span>
-                </div>
+             <div class="graph-wrap">
+               <div class="graph-container" style="position: relative;">
+                  <!-- Absolute HTML Axis Labels Overlay -->
+                  <div class="graph-y-axis" [style.opacity]="showLine.fan ? 1 : 0.5" style="display: block; position: absolute; inset: 0; left: 26px !important; padding: 6px 0;">
+                    <span class="axis-val" style="position: absolute; top: 6px; font-size: 9.5px;">5700 RPM</span>
+                    <span class="axis-val" style="position: absolute; transform: translateY(-50%); transition: top 500ms ease; font-weight: 500; font-size: 16px; left: 8px; color: #ffff41ff; background: rgba(18, 18, 18, 0.85); border: 1px solid rgba(59, 130, 246, 0.2); border-radius: 4px; padding: 2px 6px; box-shadow: 0 2px 5px rgba(0,0,0,0.5); backdrop-filter: blur(2px); text-decoration: overline;" [style.top.%]="fanMidLabelPos">{{ fanMidLabel }}</span>
+                    <span class="axis-val" style="position: absolute; bottom: 6px; font-size: 9.5px;">0 RPM</span>
+                  </div>
 
-                <svg class="monitor-graph" viewBox="0 0 300 60" preserveAspectRatio="none">
-                  <defs>
-                    <linearGradient id="fanGrad" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stop-color="#3b82f6" stop-opacity="0.18"></stop>
-                      <stop offset="100%" stop-color="#3b82f6" stop-opacity="0"></stop>
-                    </linearGradient>
-                  </defs>
-                  <!-- Y-axis tick marks every 1000 RPM -->
-                  <line *ngFor="let t of fanRpmTickData" x1="0" [attr.y1]="t.y" x2="6" [attr.y2]="t.y" class="y-tick-line" />
-                  <line *ngFor="let t of fanRpmTickData" x1="294" [attr.y1]="t.y" x2="300" [attr.y2]="t.y" class="y-tick-line" />
-                  <path *ngIf="showLine.fan" [attr.d]="fanAreaPath" fill="url(#fanGrad)"></path>
-                  <path *ngIf="showLine.fan" [attr.d]="fanLinePath" stroke="#3b82f6" stroke-width="1.5" fill="none" stroke-linecap="round"></path>
-                </svg>
-              </div>
-              <div class="graph-tick-labels graph-tick-labels--right" aria-hidden="true">
-                <span *ngFor="let t of fanRpmTickData" class="gtick-lbl gtick-lbl--right" [style.top.%]="(t.y / 60) * 100">{{ t.label }}</span>
-              </div>
-            </div>
+                 <svg class="monitor-graph" viewBox="0 0 300 60" preserveAspectRatio="none">
+                   <defs>
+                     <linearGradient id="fanGrad" x1="0" y1="0" x2="0" y2="1">
+                       <stop offset="0%" stop-color="#3b82f6" stop-opacity="0.18"></stop>
+                       <stop offset="100%" stop-color="#3b82f6" stop-opacity="0"></stop>
+                     </linearGradient>
+                   </defs>
+                   <!-- Y-axis tick marks every 1000 RPM -->
+                   <line *ngFor="let t of fanRpmTickData" x1="0" [attr.y1]="t.y" x2="6" [attr.y2]="t.y" class="y-tick-line" />
+                   <line *ngFor="let t of fanRpmTickData" x1="294" [attr.y1]="t.y" x2="300" [attr.y2]="t.y" class="y-tick-line" />
+                   <path *ngIf="showLine.fan" [attr.d]="fanAreaPath" fill="url(#fanGrad)"></path>
+                   <path *ngIf="showLine.fan" [attr.d]="fanLinePath" stroke="#3b82f6" stroke-width="1.5" fill="none" stroke-linecap="round"></path>
+                 </svg>
+
+                 <!-- Left Tick Labels Overlay -->
+                 <div class="graph-tick-labels-overlay" aria-hidden="true">
+                   <span *ngFor="let t of fanRpmTickData" class="gtick-lbl" [style.top.%]="(t.y / 60) * 100">{{ t.label }}</span>
+                 </div>
+
+                 <!-- Right Tick Labels Overlay -->
+                 <div class="graph-tick-labels-overlay graph-tick-labels-overlay--right" aria-hidden="true">
+                   <span *ngFor="let t of fanRpmTickData" class="gtick-lbl gtick-lbl--right" [style.top.%]="(t.y / 60) * 100">{{ t.label }}</span>
+                 </div>
+               </div>
+             </div>
           </div>
         </div>
 
@@ -413,11 +426,13 @@ export interface ShowLineConfig {
       flex: 1;
       height: 80px;
       margin-top: 0 !important;
+      overflow: visible !important;
     }
     .graph-wrap {
       display: flex;
       align-items: stretch;
       margin-top: 4px;
+      padding: 0 18px;
     }
     .graph-wrap--inline {
       flex: 1;
@@ -432,9 +447,27 @@ export interface ShowLineConfig {
       width: 18px;
       position: relative;
       flex-shrink: 0;
+      box-sizing: border-box;
+      border-top: 1px solid transparent;
+      border-bottom: 1px solid transparent;
+      height: 95px;
+      margin-top: 4px;
     }
     .graph-tick-labels--right {
       width: 18px;
+    }
+    .graph-tick-labels-overlay {
+      position: absolute;
+      top: 1px;
+      bottom: 1px;
+      left: -18px;
+      width: 18px;
+      pointer-events: none;
+      z-index: 10;
+    }
+    .graph-tick-labels-overlay--right {
+      left: auto;
+      right: -18px;
     }
     .gtick-lbl {
       position: absolute;
@@ -615,7 +648,7 @@ export interface ShowLineConfig {
       background: rgba(0, 0, 0, 0.25);
       border: 1px solid rgba(255, 255, 255, 0.02);
       border-radius: 6px;
-      overflow: hidden;
+      overflow: visible !important;
       margin-top: 4px;
       position: relative;
     }
@@ -829,6 +862,18 @@ export class MonitorStripComponent implements OnInit, OnDestroy {
     fan: number;
   }[] = [];
 
+  private lastAverageCalcTime: number = 0;
+  private cachedAveragePower: string = '~0W';
+  private cachedAverageValueRaw: number = 0;
+
+  private lastTempAverageCalcTime: number = 0;
+  private cachedAverageTemp: string = '~30°C';
+  private cachedAverageTempValueRaw: number = 30;
+
+  private lastFanAverageCalcTime: number = 0;
+  private cachedAverageFan: string = '~0 RPM';
+  private cachedAverageFanValueRaw: number = 0;
+
   // Toggle Visibility Map for Graph lines (typed strongly to prevent TS4111)
   showLine: ShowLineConfig = {
     fastPpt: true,
@@ -956,13 +1001,18 @@ export class MonitorStripComponent implements OnInit, OnDestroy {
 
   // Dynamic getters for dynamic Y-Axis labels
   get powerMaxLabel(): string {
-    const maxY = Math.max(this.metrics?.fastPptLimit || 55, this.metrics?.slowPptLimit || 55, this.metrics?.stapmLimit || 55, this.peakPower || 0, 55) * 1.1;
-    return `${Math.round(maxY)}W`;
+    return `${this.activeLimit}W`;
   }
 
   get powerMidLabel(): string {
-    const maxY = Math.max(this.metrics?.fastPptLimit || 55, this.metrics?.slowPptLimit || 55, this.metrics?.stapmLimit || 55, this.peakPower || 0, 55) * 1.1;
-    return `${Math.round(maxY / 2)}W`;
+    return this.cachedAveragePower;
+  }
+
+  get powerMidLabelPos(): number {
+    const maxY = this.activeLimit || 55;
+    const avg = this.cachedAverageValueRaw || (maxY / 2);
+    const pct = (this.getPowerY(avg) / 60) * 100;
+    return Math.max(15, Math.min(85, pct));
   }
 
   get tempMaxLabel(): string {
@@ -971,9 +1021,26 @@ export class MonitorStripComponent implements OnInit, OnDestroy {
   }
 
   get tempMidLabel(): string {
+    return this.cachedAverageTemp;
+  }
+
+  get tempMidLabelPos(): number {
     const minTemp = 30;
     const maxTemp = Math.max(this.metrics?.tempLimit || 90, 100);
-    return `${Math.round(minTemp + (maxTemp - minTemp) / 2)}°C`;
+    const range = maxTemp - minTemp;
+    const avg = this.cachedAverageTempValueRaw || (minTemp + range / 2);
+    const pct = (this.getTempY(avg) / 60) * 100;
+    return Math.max(15, Math.min(85, pct));
+  }
+
+  get fanMidLabel(): string {
+    return this.cachedAverageFan;
+  }
+
+  get fanMidLabelPos(): number {
+    const avg = this.cachedAverageFanValueRaw || 20;
+    const pct = (this.getFanY(avg) / 60) * 100;
+    return Math.max(15, Math.min(85, pct));
   }
 
   // Y-axis tick data for temperature graph: one tick every 10°C
@@ -998,11 +1065,10 @@ export class MonitorStripComponent implements OnInit, OnDestroy {
 
   // Y-axis tick data for power graph: one tick every 10W
   get powerTickData(): { y: number, label: string }[] {
-    const maxY = Math.max(this.metrics?.fastPptLimit || 55, this.metrics?.slowPptLimit || 55, this.metrics?.stapmLimit || 55, this.peakPower || 0, 55) * 1.1;
+    const maxY = this.activeLimit || 55;
     const data: { y: number, label: string }[] = [];
-    for (let w = 0; w <= Math.ceil(maxY / 10) * 10; w += 10) {
-      if (this.getPowerY(w) < 0) break;
-      data.push({ y: this.getPowerY(w), label: `${w}` });
+    for (let w = 0; w <= maxY; w += 10) {
+      data.push({ y: this.getPowerY(w), label: w === 0 ? '' : `${w}` });
     }
     return data;
   }
@@ -1039,8 +1105,9 @@ export class MonitorStripComponent implements OnInit, OnDestroy {
   }
 
   getPowerY(val: number): number {
-    const maxY = Math.max(this.metrics?.fastPptLimit || 55, this.metrics?.slowPptLimit || 55, this.metrics?.stapmLimit || 55, this.peakPower || 0, 55) * 1.1;
-    return 60 - (val / maxY) * 60;
+    const maxY = this.activeLimit || 55;
+    const y = 60 - (val / maxY) * 60;
+    return Math.max(0, Math.min(60, y));
   }
 
   getTempY(val: number): number {
@@ -1103,6 +1170,33 @@ export class MonitorStripComponent implements OnInit, OnDestroy {
     // Filter history points in the active time window
     const visiblePoints = [...this.history.filter(item => item.timestamp >= visibleCutoff)];
     if (visiblePoints.length === 0) return;
+
+    // Calculate rolling average of the visible time window every 10 seconds
+    if (now - this.lastAverageCalcTime >= 10000 || this.cachedAveragePower === '~0W') {
+      this.lastAverageCalcTime = now;
+      
+      // CPU Power average
+      const sumPower = visiblePoints.reduce((acc, pt) => acc + pt.fastPpt, 0);
+      const avgPower = sumPower / visiblePoints.length;
+      const roundedAvgPower = Math.round(avgPower / 5) * 5;
+      this.cachedAverageValueRaw = roundedAvgPower;
+      this.cachedAveragePower = `${roundedAvgPower}W`;
+
+      // Temp average
+      const sumTemp = visiblePoints.reduce((acc, pt) => acc + pt.temp, 0);
+      const avgTemp = sumTemp / visiblePoints.length;
+      const roundedAvgTemp = Math.round(avgTemp);
+      this.cachedAverageTempValueRaw = roundedAvgTemp;
+      this.cachedAverageTemp = `${roundedAvgTemp}°C`;
+
+      // Fan average
+      const sumFan = visiblePoints.reduce((acc, pt) => acc + pt.fan, 0);
+      const avgFan = sumFan / visiblePoints.length;
+      this.cachedAverageFanValueRaw = avgFan;
+      const rpm = this.getRpm(avgFan);
+      const roundedRpm = Math.round(rpm / 100) * 100;
+      this.cachedAverageFan = `${roundedRpm} RPM`;
+    }
 
     let fastCoords: { x: number; y: number }[] = [];
     let slowCoords: { x: number; y: number }[] = [];
