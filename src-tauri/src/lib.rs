@@ -7,6 +7,8 @@ use core::ryzen_adj::{RyzenAdjResponse, set_performance_mode, set_balanced_mode,
 use core::stress::{start_cpu_stress, stop_cpu_stress, get_stress_status};
 
 use std::sync::atomic::{AtomicBool, Ordering};
+#[cfg(target_os = "windows")]
+use std::os::windows::process::CommandExt;
 use std::sync::Mutex;
 use tauri::menu::{Menu, MenuItem};
 use tauri::tray::{TrayIconBuilder, TrayIconEvent};
@@ -264,49 +266,51 @@ fn set_autostart(enabled: bool) -> Result<(), String> {
         .ok_or_else(|| "Invalid path encoding".to_string())?;
 
     if enabled {
-        let status = std::process::Command::new("reg")
-            .args(&[
-                "add",
-                "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Run",
-                "/v",
-                "NiyanTraK",
-                "/t",
-                "REG_SZ",
-                "/d",
-                &format!("\"{}\" --autostart", exe_str),
-                "/f",
-            ])
-            .status()
-            .map_err(|e| format!("Failed to execute registry command: {}", e))?;
+        let mut cmd = std::process::Command::new("schtasks");
+        cmd.args(&[
+            "/create",
+            "/tn", "NiyanTraK_Autostart",
+            "/tr", &format!("\"{}\" --autostart", exe_str),
+            "/sc", "onlogon",
+            "/rl", "highest",
+            "/f"
+        ]);
+        #[cfg(windows)]
+        cmd.creation_flags(0x08000000);
+
+        let status = cmd.status()
+            .map_err(|e| format!("Failed to execute schtasks command: {}", e))?;
 
         if !status.success() {
-            return Err("Registry command exited with error status".to_string());
+            return Err("schtasks command exited with error status".to_string());
         }
     } else {
-        let _ = std::process::Command::new("reg")
-            .args(&[
-                "delete",
-                "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Run",
-                "/v",
-                "NiyanTraK",
-                "/f",
-            ])
-            .status();
+        let mut cmd = std::process::Command::new("schtasks");
+        cmd.args(&[
+            "/delete",
+            "/tn", "NiyanTraK_Autostart",
+            "/f"
+        ]);
+        #[cfg(windows)]
+        cmd.creation_flags(0x08000000);
+
+        let _ = cmd.status();
     }
     Ok(())
 }
 
 #[tauri::command]
 fn get_autostart() -> Result<bool, String> {
-    let output = std::process::Command::new("reg")
-        .args(&[
-            "query",
-            "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Run",
-            "/v",
-            "NiyanTraK",
-        ])
-        .output()
-        .map_err(|e| format!("Failed to execute registry query: {}", e))?;
+    let mut cmd = std::process::Command::new("schtasks");
+    cmd.args(&[
+        "/query",
+        "/tn", "NiyanTraK_Autostart"
+    ]);
+    #[cfg(windows)]
+    cmd.creation_flags(0x08000000);
+
+    let output = cmd.output()
+        .map_err(|e| format!("Failed to execute schtasks query: {}", e))?;
 
     Ok(output.status.success())
 }
