@@ -1,6 +1,6 @@
 {
   "name": "victus-deck",
-  "version": "3.0.1",
+  "version": "3.3.3",
   "scripts": {
     "ng": "ng",
     "start": "ng serve",
