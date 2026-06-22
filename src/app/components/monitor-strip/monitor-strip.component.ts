@@ -39,7 +39,7 @@ export interface ShowLineConfig {
               <!-- Left: Wattage numbers column -->
               <div class="live-wattage-col">
                 <div class="live-watt-row" style="display: flex; align-items: baseline; gap: 4px;">
-                  <span class="live-watt-val" style="font-variant-numeric: tabular-nums;">{{ metrics.fastPpt.toFixed(1) }}W</span>
+                  <span class="live-watt-val" style="font-variant-numeric: tabular-nums;">{{ metrics.fastPpt | number:'1.0-0' }}W</span>
                   <span class="live-watt-limit" style="font-size: 11px; color: #888;">/ {{ activeLimit }}W</span>
                 </div>
                 <div class="live-meta-row" style="display: flex; align-items: center; gap: 6px; margin-top: 1px;">
@@ -62,7 +62,7 @@ export interface ShowLineConfig {
                   <!-- Absolute HTML Axis Labels Overlay -->
                   <div class="graph-y-axis graph-y-axis-cpu" [style.opacity]="(showLine.fastPpt || showLine.slowPpt || showLine.stapm) ? 1 : 0.5" style="display: block; position: absolute; inset: 0; padding: 6px 0;">
                     <span class="axis-val" style="position: absolute; top: 6px; font-size: 9.5px;">{{ powerMaxLabel }}</span>
-                    <span class="axis-val" style="position: absolute; transform: translateY(-50%); transition: top 500ms ease; font-weight: 500; font-size: 16px; left: 8px; color: #ffff41ff; background: rgba(18, 18, 18, 0.85); border: 1px solid rgba(59, 130, 246, 0.2); border-radius: 4px; padding: 2px 6px; box-shadow: 0 2px 5px rgba(0,0,0,0.5); backdrop-filter: blur(2px); text-decoration: overline;" [style.top.%]="powerMidLabelPos">{{ powerMidLabel }}</span>
+                    <span class="axis-val" style="position: absolute; transform: translateY(-50%); transition: top 500ms ease; font-weight: 500; font-size: 14px; left: 23px; color: #ffff41ff; background: rgba(18, 18, 18, 0.85); border: 1px solid rgba(59, 130, 246, 0.2); border-radius: 4px; padding: 2px 6px; box-shadow: 0 2px 5px rgba(0,0,0,0.5); backdrop-filter: blur(2px); text-decoration: overline;" [style.top.%]="powerMidLabelPos">{{ powerMidLabel }}</span>
                     <span class="axis-val" style="position: absolute; bottom: 6px; font-size: 9.5px;">0W</span>
                   </div>
 
@@ -144,13 +144,13 @@ export interface ShowLineConfig {
              <div class="telemetry-item" *ngIf="metrics.dgpuSkin > 0" (click)="toggleLine('dgpuSkin')" title="Toggle graph line" [style.opacity]="showLine.dgpuSkin ? 1 : 0.65">
                 <span class="limit-dot" style="background:#06b6d4; width:5px; height:5px;" [class.dot--hidden]="!showLine.dgpuSkin"></span>
                 <span class="lbl">dGPU:</span>
-                <span class="val">{{ metrics.dgpuSkin.toFixed(1) }}°C</span>
+                <span class="val">{{ metrics.dgpuSkin | number:'1.0-0' }}°C</span>
               </div>
               <span class="telemetry-divider" *ngIf="metrics.dgpuSkin > 0">|</span>
               <div class="telemetry-item" (click)="toggleLine('temp')" title="Toggle graph line" [style.opacity]="showLine.temp ? 1 : 0.65">
                 <span class="limit-dot" style="background:#ef4444; width:5px; height:5px;" [class.dot--hidden]="!showLine.temp"></span>
                 <span class="lbl">CORE:</span>
-                <span class="val">{{ metrics.temp.toFixed(1) }}°C</span>
+                <span class="val">{{ metrics.temp | number:'1.0-0' }}°C</span>
                 <span class="limit-val" style="font-size: 11px; color: #888; margin-left: 2px;">/{{ metrics.tempLimit }}°C</span>
                 <span class="monitor-peak" *ngIf="peakTemp > 0" [style.color]="metricColor(peakTemp, metrics.tempLimit)" style="font-size: 11px; font-weight: 600; margin-left: 4px;">↑{{ peakTemp }}°C</span>
               </div>
@@ -160,7 +160,7 @@ export interface ShowLineConfig {
                <div class="telemetry-item" (click)="toggleLine('apuSkin')" title="Toggle graph line" [style.opacity]="showLine.apuSkin ? 1 : 0.65">
                 <span class="limit-dot" style="background:#a855f7; width:5px; height:5px;" [class.dot--hidden]="!showLine.apuSkin"></span>
                 <span class="lbl">APU:</span>
-                <span class="val">{{ metrics.apuSkin.toFixed(1) }}°C</span>
+                <span class="val">{{ metrics.apuSkin | number:'1.0-0' }}°C</span>
               </div>
             </div>
 
@@ -170,7 +170,7 @@ export interface ShowLineConfig {
                  <!-- Absolute HTML Axis Labels Overlay -->
                  <div class="graph-y-axis" [style.opacity]="(showLine.temp || showLine.apuSkin || showLine.dgpuSkin) ? 1 : 0.5" style="display: block; position: absolute; inset: 0; left: 26px !important; padding: 6px 0;">
                    <span class="axis-val" style="position: absolute; top: 6px; font-size: 9.5px;">{{ tempMaxLabel }}</span>
-                   <span class="axis-val" style="position: absolute; transform: translateY(-50%); transition: top 500ms ease; font-weight: 500; font-size: 16px; left: 8px; color: #ffff41ff; background: rgba(18, 18, 18, 0.85); border: 1px solid rgba(59, 130, 246, 0.2); border-radius: 4px; padding: 2px 6px; box-shadow: 0 2px 5px rgba(0,0,0,0.5); backdrop-filter: blur(2px); text-decoration: overline;" [style.top.%]="tempMidLabelPos">{{ tempMidLabel }}</span>
+                   <span class="axis-val" style="position: absolute; transform: translateY(-50%); transition: top 500ms ease; font-weight: 500; font-size: 14px; left: 33px; color: #ffff41ff; background: rgba(18, 18, 18, 0.85); border: 1px solid rgba(59, 130, 246, 0.2); border-radius: 4px; padding: 2px 6px; box-shadow: 0 2px 5px rgba(0,0,0,0.5); backdrop-filter: blur(2px); text-decoration: overline;" [style.top.%]="tempMidLabelPos">{{ tempMidLabel }}</span>
                    <span class="axis-val" style="position: absolute; bottom: 6px; font-size: 9.5px;">30°C</span>
                  </div>
 
@@ -238,7 +238,7 @@ export interface ShowLineConfig {
                   <!-- Absolute HTML Axis Labels Overlay -->
                   <div class="graph-y-axis" [style.opacity]="showLine.fan ? 1 : 0.5" style="display: block; position: absolute; inset: 0; left: 26px !important; padding: 6px 0;">
                     <span class="axis-val" style="position: absolute; top: 6px; font-size: 9.5px;">5700 RPM</span>
-                    <span class="axis-val" style="position: absolute; transform: translateY(-50%); transition: top 500ms ease; font-weight: 500; font-size: 16px; left: 8px; color: #ffff41ff; background: rgba(18, 18, 18, 0.85); border: 1px solid rgba(59, 130, 246, 0.2); border-radius: 4px; padding: 2px 6px; box-shadow: 0 2px 5px rgba(0,0,0,0.5); backdrop-filter: blur(2px); text-decoration: overline;" [style.top.%]="fanMidLabelPos">{{ fanMidLabel }}</span>
+                    <span class="axis-val" style="position: absolute; transform: translateY(-50%); transition: top 500ms ease; font-weight: 500; font-size: 14px; left: 23px; color: #ffff41ff; background: rgba(18, 18, 18, 0.85); border: 1px solid rgba(59, 130, 246, 0.2); border-radius: 4px; padding: 2px 6px; box-shadow: 0 2px 5px rgba(0,0,0,0.5); backdrop-filter: blur(2px); text-decoration: overline;" [style.top.%]="fanMidLabelPos">{{ fanMidLabel }}</span>
                     <span class="axis-val" style="position: absolute; bottom: 6px; font-size: 9.5px;">0 RPM</span>
                   </div>
 
@@ -730,8 +730,11 @@ export interface ShowLineConfig {
 
     /* ─── COMPACT MODE ─── */
     .monitor-strip--compact {
-      padding: 8px 59px 0 16px;
+      padding: 8px 59px 12px 16px;
       gap: 0;
+      background: #121212;
+      border-bottom: 1px solid #2e2e2e;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
     }
     .monitor-compact-row {
       display: flex;
@@ -1001,7 +1004,7 @@ export class MonitorStripComponent implements OnInit, OnDestroy {
 
   // Dynamic getters for dynamic Y-Axis labels
   get powerMaxLabel(): string {
-    return `${this.activeLimit}W`;
+    return `${(this.activeLimit || 55) + 5}W`;
   }
 
   get powerMidLabel(): string {
@@ -1009,7 +1012,7 @@ export class MonitorStripComponent implements OnInit, OnDestroy {
   }
 
   get powerMidLabelPos(): number {
-    const maxY = this.activeLimit || 55;
+    const maxY = (this.activeLimit || 55) + 5;
     const avg = this.cachedAverageValueRaw || (maxY / 2);
     const pct = (this.getPowerY(avg) / 60) * 100;
     return Math.max(15, Math.min(85, pct));
@@ -1065,7 +1068,7 @@ export class MonitorStripComponent implements OnInit, OnDestroy {
 
   // Y-axis tick data for power graph: one tick every 10W
   get powerTickData(): { y: number, label: string }[] {
-    const maxY = this.activeLimit || 55;
+    const maxY = (this.activeLimit || 55) + 5;
     const data: { y: number, label: string }[] = [];
     for (let w = 0; w <= maxY; w += 10) {
       data.push({ y: this.getPowerY(w), label: w === 0 ? '' : `${w}` });
@@ -1105,7 +1108,7 @@ export class MonitorStripComponent implements OnInit, OnDestroy {
   }
 
   getPowerY(val: number): number {
-    const maxY = this.activeLimit || 55;
+    const maxY = (this.activeLimit || 55) + 5;
     const y = 60 - (val / maxY) * 60;
     return Math.max(0, Math.min(60, y));
   }
@@ -1174,11 +1177,11 @@ export class MonitorStripComponent implements OnInit, OnDestroy {
     // Calculate rolling average of the visible time window every 10 seconds
     if (now - this.lastAverageCalcTime >= 10000 || this.cachedAveragePower === '~0W') {
       this.lastAverageCalcTime = now;
-      
+
       // CPU Power average
       const sumPower = visiblePoints.reduce((acc, pt) => acc + pt.fastPpt, 0);
       const avgPower = sumPower / visiblePoints.length;
-      const roundedAvgPower = Math.round(avgPower / 5) * 5;
+      const roundedAvgPower = Math.round(avgPower);
       this.cachedAverageValueRaw = roundedAvgPower;
       this.cachedAveragePower = `${roundedAvgPower}W`;
 
