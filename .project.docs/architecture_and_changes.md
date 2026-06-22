@@ -278,7 +278,7 @@ NiyanTraK now features an ultra-compact desktop companion widget and complete na
 - **TDP Selector Highlight Sync**: Stabilized the active TDP selector stage highlight by computing closest limits using `maxTdp` (`limits.fast_limit`) instead of real-time telemetry draw (`cpuTdp` / `limits.fast_value`), preventing the highlighted button from jumping when the CPU is idle.
 - **Temp Rings Label Legibility**: Shrunk the font weight of `.ring-val` and `.ring-lbl` inside circular gauges to `400 !important` (Normal weight), ensuring the tiny telemetry text inside the circles is perfectly crisp, non-bold, and easy to read.
 - **Dynamic Core Burn Allocator**: Overhauled the Core Burn Allocator grid inside `StressPanelComponent` (`stress-panel.component.ts`) to dynamically query and map exactly the local system's active logical threads utilizing `navigator.hardwareConcurrency` (e.g. rendering exactly 12 thread slots for Hexa-Core Hyperthreaded processors) instead of a hardcoded 16.
-- **Centralized Presets Configuration File**: Isolated the default standard profiles from direct TS hardcoding and relocated them into a single centralized configuration file `presets.config.ts` (`src/app/presets.config.ts`). Imported this file synchronously across both the main orchestrator (`app.component.ts`) and the overlay widget (`widget.component.ts`), enabling easy pre-build adjustments in a single location.
+- **Centralized Presets Configuration File**: Isolated the default standard profiles from direct TS hardcoding and relocated them into a single centralized configuration file `presets.json` (`src/app/config/presets.json`). Imported this file synchronously across both the main orchestrator (`app.component.ts`) and the overlay widget (`widget.component.ts`), enabling easy pre-build adjustments in a single JSON file.
 
 ### 8.4 Bezel Strip Widget Launcher Migration (2026-05-22)
 - **Widget Trigger Relocation**: Migrated the companion widget toggle trigger from a simple `+` button in the left Navigation Rail to a highly attractive right-edge "bezel strip" (ribbon) docked vertically alongside the existing red "STRESS" bezel.
@@ -303,6 +303,49 @@ NiyanTraK now features an ultra-compact desktop companion widget and complete na
 - **9-Click Trigger**: Clicking the heart emoji (`❤️`) in the footer **9 times** triggers the log export. 
 - **Angular-to-Tauri Decoupling**: The Angular frontend handles *only* the Tauri command invocation (`register_heart_click`), keeping all count, resetting, and filesystem writing logic safely in the Rust backend.
 - **File Export Location**: The logs are compiled and written as a formatted text file (`victus_deck_debug_logs.txt`) directly in the application's root installation folder (resolving `std::env::current_exe()` parent directory dynamically at runtime).
+
+---
+
+## 10. Advanced Mode and Collapsible Points Editor (2026-06-20)
+
+### 10.1 Advanced Fan Mode (Level 0 Unlocked)
+- **Advanced Checkbox**: Added a checkbox in the header next to the enable switch labeled "Advanced" with a warning sign (`⚠️`).
+- **Icon Animation**: Checking the checkbox triggers a keyframe scale-up and opacity animation (`danger-blink`) that flashes the danger icon exactly 3 times (400ms per blink).
+- **BIOS Level 0 Unlocking**:
+  - Enabling Advanced mode allows the lowest fan level to be configured to `0` (0 RPM / fan off).
+  - Sanitization logic is implemented when disabling Advanced mode: any point configured below level `8` is automatically reverted back to level `8` to prevent invalid states.
+  - The SVG Y-axis scale dynamically shifts its baseline to `0` RPM (when advanced is active) or `800` RPM (normally), updating horizontal grid lines reactively.
+  - Intermediate invalid BIOS levels (`1` to `7`) are skipped automatically during rounding and dragging, snapping points cleanly between `0` (fan off) and `8` (800 RPM).
+
+### 10.2 Dynamic Points Management & Collapsible Editor
+- **Collapsible Layout**: The Steering Coordinate Points editor card is collapsed by default (`pointsCollapsed = true`) and can be expanded by clicking the card header.
+- **Remove Points**: A `✕` button is rendered next to each point row when the curve has more than `3` points, letting users delete coordinate points they do not need.
+- **Add Points**: An `+ Add Point` button is displayed below the grid when the curve has fewer than `8` points.
+- **Gap-Based Point Insertion**: Adding a point automatically calculates the largest temperature gap between any two existing adjacent coordinate points and inserts the new point in the exact center of that gap, averaging both temperature and fan levels to maintain curve continuity.
+
+### 10.3 Premium Form Inputs & Custom Dropdowns (2026-06-21)
+- **Settings Custom Dropdown**: Replaced the native HTML `<select>` element for Scheduled Auto-Export with a custom, glassmorphic dropdown UI component. Staged options include Hover effects, double-light specularity highlights, a rotating arrow icon, and document-level click handler hooks using Angular `@HostListener` with `stopPropagation` to handle outside clicks.
+- **Responsive Layout & Width Scaling**: Integrated `@media (max-width: 750px)` breakpoint overrides to automatically stack dashboard columns vertically, collapse margins/paddings, and scale down telemetry metrics text/gages.
+- **Dynamic Sticky Header Monitor Strip**: Restructured `app.component.ts` layout to dynamically swap the monitor strip outside the viewport (fixed header) when maximized/fullscreen or inside the viewport (naturally scrolling) when window width/height is smaller. Added an `isSticky` input modifier to zero margins/paddings for structural alignment.
+- **Refresh Bezel Button**: Relocated peak values reset trigger to a dedicated neon indigo bezel strip on the right side of the window (offset top `10px`). Wired bezel click to reset telemetry peaks or discard unsaved custom curve points when viewing the fancurve screen.
+- **Win32 FFI Local Time Log Exporter**: Built FFI system structure definitions for Win32 `SYSTEMTIME` and imported `GetLocalTime` dynamically on Windows backend platforms to output timezone-aware localized timestamps (`YYYYMMDD_HHMMSS`) for manual exports, autostart scheduling, and shutdown handlers.
+
+---
+
+## 11. Core Efficiency and Telemetry Optimizations (2026-06-21)
+
+### 11.1 RyzenAdj Process Priority Tuning
+- **Windows Priority Class Override**: Modified `ryzen_adj.rs` process creation flags to combine `CREATE_NO_WINDOW` (`0x08000000`) and `BELOW_NORMAL_PRIORITY_CLASS` (`0x00004000`), yielding `0x08004000`.
+- **CPPC Optimization**: This priority downgrade prevents the Windows Collaborative Processor Performance Control (CPPC) scheduler from aggressively boosting CPU clock frequencies when the telemetry polling thread periodically queries `ryzenadj.exe` registers. It mitigates 15-20W CPU clock spikes, ensuring stable idle power consumption (~5W).
+
+### 11.2 Persistent Background PowerShell Session
+- **Process Creation Overhead Mitigation**: Spawning `powershell.exe` to run WMI-based fan speed operations via `OmenHwCtl.ps1` previously incurred heavy single-core startup costs (300ms–800ms) due to .NET CLR runtime initialization.
+- **In-Memory Shell Daemon (`ps_session.rs`)**:
+  - Implemented a persistent, thread-safe background PowerShell process using a global `OnceLock<Mutex<Option<PsSession>>>` structure.
+  - The shell is spawned once on-demand using `-NoProfile -NoExit -Command -` args, combined with `BELOW_NORMAL_PRIORITY_CLASS` process flags.
+  - Rust pipes command sequences directly to the persistent process's `stdin` and reads responses from its `stdout` via a custom string-sentinel synchronization handshake (`__PS_CMD_DONE__`).
+  - Completely avoids shell startup overhead during fan level changes, reducing shift latency to sub-20ms and eliminating fan shifting CPU spikes.
+
 
 
 
