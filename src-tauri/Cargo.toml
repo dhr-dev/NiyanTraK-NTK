@@ -1,6 +1,6 @@
 [package]
 name = "niyantrak"
-version = "3.4.0"
+version = "3.5.0"
 description = "Windows Machine Control Utility"
 authors = ["Dhruvil_Gajjar"]
 edition = "2021"

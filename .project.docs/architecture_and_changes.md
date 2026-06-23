@@ -361,6 +361,17 @@ NiyanTraK now features an ultra-compact desktop companion widget and complete na
 - **Mean Temperature Badge Styling**: The yellow average badge is styled with a distinct overline bar (x̄) and offset vertically (`y="15"`) to prevent overlap with the red raw temperature badge (`y="2"`).
 - **Log Transition Indicators**: Log lines explicitly indicate shift directions, outputting `[⚡ Shifted Up]` or `[⚡ Shifted Down]` during threshold crossings.
 
+---
+
+## 13. NSIS Windows Installer Improvements (v3.5.0) (2026-06-23)
+
+### 13.1 Custom Uninstall Prompt
+- **Interactive Upgrade Path**: Implemented NSIS installer hooks via `hooks.nsh` and linked them in `tauri.conf.json`.
+- **Registry Detection**: The `NSIS_HOOK_PREINSTALL` macro queries the Windows Registry under `HKCU` and `HKLM` at `Software\Microsoft\Windows\CurrentVersion\Uninstall\com.dhruvil.niyantrak` to read `UninstallString` and `InstallLocation`.
+- **Uninstallation Dialog**: If an existing version is found, a MessageBox dialog is shown to the user asking whether they wish to uninstall the previous version before continuing.
+- **Synchronous Execution**: If the user confirms, the uninstaller is executed synchronously using `ExecWait` with the `_?=` switch (preventing the uninstaller from copying itself and exiting prematurely) before proceeding with the fresh installation.
+
+
 
 
 
