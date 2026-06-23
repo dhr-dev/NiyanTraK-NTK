@@ -344,7 +344,22 @@ NiyanTraK now features an ultra-compact desktop companion widget and complete na
   - Implemented a persistent, thread-safe background PowerShell process using a global `OnceLock<Mutex<Option<PsSession>>>` structure.
   - The shell is spawned once on-demand using `-NoProfile -NoExit -Command -` args, combined with `BELOW_NORMAL_PRIORITY_CLASS` process flags.
   - Rust pipes command sequences directly to the persistent process's `stdin` and reads responses from its `stdout` via a custom string-sentinel synchronization handshake (`__PS_CMD_DONE__`).
-  - Completely avoids shell startup overhead during fan level changes, reducing shift latency to sub-20ms and eliminating fan shifting CPU spikes.
+- Completely avoids shell startup overhead during fan level changes, reducing shift latency to sub-20ms and eliminating fan shifting CPU spikes.
+
+---
+
+## 12. Smart Auto Fan Curve Upgrades (v3.4.0) (2026-06-23)
+
+### 12.1 Stepped Lookup Implementation
+- **Discrete Step Mapping**: Modified `interpolate_fan_level` and `process_smart_fan` in `fan.rs` to operate strictly on discrete temperature thresholds. Discarded continuous linear interpolation to prevent minor, rapid temperature fluctuations from triggering constant fan speed/pitch changes, enhancing acoustic comfort.
+- **Sensor Glitch Filtering**: Filtered out invalid temperature readings (`≤ 20°C`) from rolling average calculations, protecting the system from sudden hardware reporting drops.
+- **Instant Spool-Up**: Preserved instant spool-up transitions bypassing the average delay when raw temperatures exceed `90°C` (the configured `instant_spool_temp` threshold) to safeguard CPU under high-thermal workloads.
+
+### 12.2 Graphical and Interface Enhancements
+- **Stepped SVG Rendering**: Updated `fan-curve-panel.component.ts` to compute and draw stepped fan curve paths (using horizontal and vertical `L` segments) instead of diagonal line/area segments.
+- **Dual Temperature Tracking Indicators**: Added a vertical red line for raw temperature and a yellow line/badge for the decider (average) temperature.
+- **Mean Temperature Badge Styling**: The yellow average badge is styled with a distinct overline bar (x̄) and offset vertically (`y="15"`) to prevent overlap with the red raw temperature badge (`y="2"`).
+- **Log Transition Indicators**: Log lines explicitly indicate shift directions, outputting `[⚡ Shifted Up]` or `[⚡ Shifted Down]` during threshold crossings.
 
 
 
