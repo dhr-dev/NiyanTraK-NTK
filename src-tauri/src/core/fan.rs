@@ -114,34 +114,37 @@ pub fn interpolate_fan_level(temp: f64, points: &[FanCurvePoint]) -> u32 {
     let mut sorted_points = points.to_vec();
     sorted_points.sort_by(|a, b| a.temp.partial_cmp(&b.temp).unwrap_or(std::cmp::Ordering::Equal));
 
-    if temp <= sorted_points[0].temp {
+    // If temp is below the first point's temperature, run at the first point's level
+    if temp < sorted_points[0].temp {
         return sorted_points[0].level;
     }
-    if temp >= sorted_points[sorted_points.len() - 1].temp {
-        return sorted_points[sorted_points.len() - 1].level;
-    }
 
-    for i in 0..sorted_points.len() - 1 {
-        let p1 = &sorted_points[i];
-        let p2 = &sorted_points[i+1];
-        if temp >= p1.temp && temp <= p2.temp {
-            let t_diff = p2.temp - p1.temp;
-            if t_diff.abs() < 1e-5 {
-                return p1.level;
-            }
-            let level_diff = p2.level as f64 - p1.level as f64;
-            let ratio = (temp - p1.temp) / t_diff;
-            let computed = p1.level as f64 + ratio * level_diff;
-            return computed.round() as u32;
+    // Find the highest point whose temperature threshold is met
+    let mut selected_level = sorted_points[0].level;
+    for pt in &sorted_points {
+        if temp >= pt.temp {
+            selected_level = pt.level;
+        } else {
+            break;
         }
     }
 
-    30
+    selected_level
 }
 
 pub fn process_smart_fan(temp: f64, state: &mut SmartFanState) -> (u32, f64, bool, bool) {
     if !state.config.enabled {
         return (0, 0.0, false, false);
+    }
+
+    // Ignore invalid/glitched temperature readings (e.g. <= 20°C or > 120°C)
+    if temp <= 20.0 || temp > 120.0 {
+        let last_valid_decision = if state.temp_history.is_empty() {
+            temp
+        } else {
+            state.temp_history.iter().sum::<f64>() / state.temp_history.len() as f64
+        };
+        return (state.last_applied_level, last_valid_decision, false, false);
     }
 
     // Add temp to rolling queue
@@ -166,7 +169,7 @@ pub fn process_smart_fan(temp: f64, state: &mut SmartFanState) -> (u32, f64, boo
     // Interpolate raw level for instant spool-up check
     let raw_target_level = interpolate_fan_level(temp, &state.config.points).clamp(min_lvl, 39);
 
-    // Instant spool up only if raw temp > threshold AND it shifts target level up
+    // Spool up instantly only if raw temp > threshold AND it calls for a higher speed
     let is_instant = temp > state.config.instant_spool_temp && raw_target_level > state.last_applied_level;
 
     let decision_temp = if is_instant {

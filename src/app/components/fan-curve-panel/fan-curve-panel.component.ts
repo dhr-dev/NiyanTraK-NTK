@@ -91,22 +91,32 @@ import { RyzenService, FanCurvePoint } from '../../ryzen.service';
             <circle [attr.cx]="getSvgX(pt.temp)" [attr.cy]="getSvgY(pt.level)" r="4.5" fill="#fff" stroke="#2563eb" stroke-width="1.5" />
           </g>
 
-          <!-- Live temperature scanning bar with Target Speed Readout (Rendered on top of curve line and handles) -->
+          <!-- Live temperature scanning bar (Raw temp in red) -->
           <g *ngIf="currentTemp > 30">
-            <line [attr.x1]="tempX" y1="15" [attr.x2]="tempX" y2="140" stroke="rgba(239, 68, 68, 0.4)" stroke-width="1" stroke-dasharray="2 2" />
+            <line [attr.x1]="tempX" y1="15" [attr.x2]="tempX" y2="140" stroke="rgba(239, 68, 68, 0.35)" stroke-width="1" stroke-dasharray="2 2" />
             <circle [attr.cx]="tempX" [attr.cy]="tempY" r="4.5" fill="#ef4444" stroke="#fff" stroke-width="1" class="live-temp-node" />
             
             <!-- Temperature Badge (Top) -->
             <rect [attr.x]="tempX - 18" y="2" width="36" height="11" rx="2" fill="rgba(239, 68, 68, 0.85)" />
             <text [attr.x]="tempX" y="10" class="live-temp-text text-center">{{ currentTemp }}°C</text>
+          </g>
+
+          <!-- Rolling average temperature scanning bar (Decision temp in yellow) -->
+          <g *ngIf="decisionTemp > 30">
+            <line [attr.x1]="avgX" y1="15" [attr.x2]="avgX" y2="140" stroke="rgba(255, 255, 65, 0.35)" stroke-width="1" stroke-dasharray="2 2" />
+            <circle [attr.cx]="avgX" [attr.cy]="avgY" r="4.5" fill="#ffff41" stroke="#fff" stroke-width="1" class="live-temp-node-avg" />
+            
+            <!-- Avg Temperature Badge (Top, offset vertically to prevent overlap) -->
+            <rect [attr.x]="avgX - 18" y="15" width="36" height="11" rx="2" fill="rgba(18, 18, 18, 0.85)" stroke="rgba(255, 255, 65, 0.5)" stroke-width="1" />
+            <text [attr.x]="avgX" y="23" class="live-temp-text text-center" fill="#ffff41" font-size="7" font-weight="700" style="text-decoration: overline;">{{ decisionTemp | number:'1.0-1' }}°C</text>
             
             <!-- RPM & Level Badge (Intersection) -->
-            <rect [attr.x]="tempX + 6" [attr.y]="tempY - 18" width="82" height="15" rx="3" fill="rgba(15, 23, 42, 0.85)" stroke="rgba(255, 255, 255, 0.08)" stroke-width="1" />
-            <text [attr.x]="tempX + 10" [attr.y]="tempY - 8" fill="#ef4444" font-size="7.5" font-weight="700" font-family="inherit">
-              {{ getRpm(getLevelFromY(tempY)) }} RPM
+            <rect [attr.x]="avgX + 6" [attr.y]="avgY - 18" width="82" height="15" rx="3" fill="rgba(15, 23, 42, 0.85)" stroke="rgba(255, 255, 255, 0.08)" stroke-width="1" />
+            <text [attr.x]="avgX + 10" [attr.y]="avgY - 8" fill="#ffff41" font-size="7.5" font-weight="700" font-family="inherit">
+              {{ getRpm(getLevelFromY(avgY)) }} RPM
             </text>
-            <text [attr.x]="tempX + 56" [attr.y]="tempY - 8" fill="#888" font-size="7.5" font-weight="600" font-family="inherit">
-              (L{{ getLevelFromY(tempY) }})
+            <text [attr.x]="avgX + 56" [attr.y]="avgY - 8" fill="#888" font-size="7.5" font-weight="600" font-family="inherit">
+              (L{{ getLevelFromY(avgY) }})
             </text>
           </g>
 
@@ -262,7 +272,7 @@ import { RyzenService, FanCurvePoint } from '../../ryzen.service';
                   <span class="level-lbl" *ngIf="log.isSmartActive && log.targetLevel > 0">(L{{ log.targetLevel }})</span>
                 </span>
                 <span class="trigger-badge" *ngIf="log.isTriggered">
-                  ⚡ Shifted
+                  {{ log.shiftType === 'up' ? '⚡ Shifted Up' : (log.shiftType === 'down' ? '⚡ Shifted Down' : '⚡ Shifted') }}
                 </span>
               </div>
             </div>
@@ -811,6 +821,7 @@ export class FanCurvePanelComponent implements OnInit, OnDestroy, DoCheck {
   activeDragIndex: number | null = null;
   hoveredIndex: number | null = null;
   currentTemp = 0;
+  decisionTemp = 0;
   pointsCollapsed = true; // collapsed by default per user request
   shouldBlinkDanger = false;
   showAdvancedWarning = false;
@@ -861,6 +872,7 @@ export class FanCurvePanelComponent implements OnInit, OnDestroy, DoCheck {
     isSmartActive: boolean;
     avgSources?: number[];
     isTriggered?: boolean;
+    shiftType?: 'up' | 'down' | null;
   }[] = [];
   private pollInterval: any;
 
@@ -923,7 +935,7 @@ export class FanCurvePanelComponent implements OnInit, OnDestroy, DoCheck {
     if (limits && limits.tctl_value !== undefined) {
       this.currentTemp = Math.round(limits.tctl_value);
 
-      const decisionTemp = limits.smart_fan_decision_temp !== undefined 
+      this.decisionTemp = limits.smart_fan_decision_temp !== undefined 
         ? limits.smart_fan_decision_temp 
         : this.currentTemp;
         
@@ -949,6 +961,15 @@ export class FanCurvePanelComponent implements OnInit, OnDestroy, DoCheck {
         ? (lastEntry.targetLevel !== targetLevel || lastEntry.isSmartActive !== isSmartActive) 
         : false;
 
+      let shiftType: 'up' | 'down' | null = null;
+      if (lastEntry && lastEntry.isSmartActive && isSmartActive) {
+        if (targetLevel > lastEntry.targetLevel) {
+          shiftType = 'up';
+        } else if (targetLevel < lastEntry.targetLevel) {
+          shiftType = 'down';
+        }
+      }
+
       // Extract the temperatures that contributed to the average
       const sampleSize = Math.max(1, this.config.average_poll_size || 3);
       const avgSources = this.pollHistory
@@ -961,13 +982,14 @@ export class FanCurvePanelComponent implements OnInit, OnDestroy, DoCheck {
         timeMs,
         timestamp,
         temp: this.currentTemp,
-        decisionTemp: Number(decisionTemp.toFixed(1)),
+        decisionTemp: Number(this.decisionTemp.toFixed(1)),
         isInstant,
         targetLevel,
         targetRpm,
         isSmartActive,
         avgSources,
-        isTriggered
+        isTriggered,
+        shiftType
       });
       
       // Keep only logs from the last 2 minutes (120000 milliseconds)
@@ -1028,7 +1050,17 @@ export class FanCurvePanelComponent implements OnInit, OnDestroy, DoCheck {
       const targetStr = log.isSmartActive 
         ? (log.targetRpm > 0 ? `${log.targetRpm} RPM (Lvl ${log.targetLevel})` : '0 RPM (Off)')
         : 'Auto (HP)';
-      const shiftStr = log.isTriggered ? ' [⚡ Shifted]' : '';
+      
+      let shiftStr = '';
+      if (log.isTriggered) {
+        if (log.shiftType === 'up') {
+          shiftStr = ' [⚡ Shifted Up]';
+        } else if (log.shiftType === 'down') {
+          shiftStr = ' [⚡ Shifted Down]';
+        } else {
+          shiftStr = ' [⚡ Shifted]';
+        }
+      }
       
       lines.push(`[${log.timestamp}] Raw: ${log.temp}°C | Decider: ${log.decisionTemp}°C (${mode}${avgSourcesStr}) | Target: ${targetStr}${shiftStr}`);
     }
@@ -1202,11 +1234,20 @@ export class FanCurvePanelComponent implements OnInit, OnDestroy, DoCheck {
     const pts = this.config.points;
     if (pts.length === 0) return '';
     const sorted = [...pts].sort((a, b) => a.temp - b.temp);
-    return sorted.reduce((acc, pt, idx) => {
-      const x = this.getSvgX(pt.temp);
-      const y = this.getSvgY(pt.level);
-      return acc + (idx === 0 ? `M ${x} ${y}` : ` L ${x} ${y}`);
-    }, '');
+    
+    let path = '';
+    const startX = this.getSvgX(sorted[0].temp);
+    const startY = this.getSvgY(sorted[0].level);
+    path += `M ${startX} ${startY}`;
+    
+    for (let i = 0; i < sorted.length - 1; i++) {
+      const nextX = this.getSvgX(sorted[i+1].temp);
+      const nextY = this.getSvgY(sorted[i+1].level);
+      // Stepped path: horizontal line to the next temperature x-coord at the current level,
+      // followed by a vertical line to the next level y-coord.
+      path += ` L ${nextX} ${this.getSvgY(sorted[i].level)} L ${nextX} ${nextY}`;
+    }
+    return path;
   }
 
   get areaPath(): string {
@@ -1215,8 +1256,15 @@ export class FanCurvePanelComponent implements OnInit, OnDestroy, DoCheck {
     const sorted = [...pts].sort((a, b) => a.temp - b.temp);
     const startX = this.getSvgX(sorted[0].temp);
     const endX = this.getSvgX(sorted[sorted.length - 1].temp);
-    const lineParts = sorted.map(pt => `${this.getSvgX(pt.temp)} ${this.getSvgY(pt.level)}`).join(' L ');
-    return `M ${startX} 140 L ${lineParts} L ${endX} 140 Z`;
+    
+    let lineParts = '';
+    for (let i = 0; i < sorted.length - 1; i++) {
+      const nextX = this.getSvgX(sorted[i+1].temp);
+      const nextY = this.getSvgY(sorted[i+1].level);
+      lineParts += ` L ${nextX} ${this.getSvgY(sorted[i].level)} L ${nextX} ${nextY}`;
+    }
+    
+    return `M ${startX} 140 L ${startX} ${this.getSvgY(sorted[0].level)}${lineParts} L ${endX} 140 Z`;
   }
 
   // Live indicator positions
@@ -1229,24 +1277,43 @@ export class FanCurvePanelComponent implements OnInit, OnDestroy, DoCheck {
     if (pts.length === 0) return 140;
     const sorted = [...pts].sort((a, b) => a.temp - b.temp);
     
-    if (this.currentTemp <= sorted[0].temp) {
+    if (this.currentTemp < sorted[0].temp) {
       return this.getSvgY(sorted[0].level);
     }
-    if (this.currentTemp >= sorted[sorted.length - 1].temp) {
-      return this.getSvgY(sorted[sorted.length - 1].level);
-    }
     
-    for (let i = 0; i < sorted.length - 1; i++) {
-      const p1 = sorted[i];
-      const p2 = sorted[i+1];
-      if (this.currentTemp >= p1.temp && this.currentTemp <= p2.temp) {
-        const ratio = (this.currentTemp - p1.temp) / (p2.temp - p1.temp);
-        const y1 = this.getSvgY(p1.level);
-        const y2 = this.getSvgY(p2.level);
-        return y1 + ratio * (y2 - y1);
+    let selectedLevel = sorted[0].level;
+    for (const pt of sorted) {
+      if (this.currentTemp >= pt.temp) {
+        selectedLevel = pt.level;
+      } else {
+        break;
       }
     }
-    return 140;
+    return this.getSvgY(selectedLevel);
+  }
+
+  get avgX(): number {
+    return this.getSvgX(this.decisionTemp);
+  }
+
+  get avgY(): number {
+    const pts = this.config.points;
+    if (pts.length === 0) return 140;
+    const sorted = [...pts].sort((a, b) => a.temp - b.temp);
+    
+    if (this.decisionTemp < sorted[0].temp) {
+      return this.getSvgY(sorted[0].level);
+    }
+    
+    let selectedLevel = sorted[0].level;
+    for (const pt of sorted) {
+      if (this.decisionTemp >= pt.temp) {
+        selectedLevel = pt.level;
+      } else {
+        break;
+      }
+    }
+    return this.getSvgY(selectedLevel);
   }
 
   // Dragging logic
