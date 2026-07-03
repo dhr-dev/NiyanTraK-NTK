@@ -471,7 +471,7 @@ export class WidgetComponent implements OnInit, OnDestroy {
   activeFanPoint = 'auto';
 
   async ngOnInit() {
-    this.loadLayoutSettings();
+    await this.loadLayoutSettings();
     await this.loadPinnedProfiles();
     this.startPolling();
     this.setupTauriListeners();
@@ -484,14 +484,11 @@ export class WidgetComponent implements OnInit, OnDestroy {
     }
   }
 
-  loadLayoutSettings() {
+  async loadLayoutSettings() {
     try {
-      const stored = localStorage.getItem('niyantrak_settings');
-      if (stored) {
-        const fullSettings = JSON.parse(stored);
-        if (fullSettings.widget) {
-          this.settings = fullSettings.widget;
-        }
+      const config = await invoke<any>('get_app_config');
+      if (config && config.widget) {
+        this.settings = config.widget;
       }
       this.resizeWindow();
     } catch (e) {
@@ -684,17 +681,15 @@ export class WidgetComponent implements OnInit, OnDestroy {
       }
     }
   }
-
   async hidePanel(panelKey: keyof WidgetSettings) {
     this.settings[panelKey] = false;
     try {
-      const stored = localStorage.getItem('niyantrak_settings');
-      let fullSettings: any = {};
-      if (stored) {
-        fullSettings = JSON.parse(stored);
-      }
-      fullSettings.widget = this.settings;
-      localStorage.setItem('niyantrak_settings', JSON.stringify(fullSettings));
+      const config = await invoke<any>('get_app_config');
+      const mergedConfig = {
+        ...config,
+        widget: this.settings
+      };
+      await invoke('save_app_config', { config: mergedConfig });
       
       const win = getCurrentWebviewWindow();
       await win.emit('layout_changed', this.settings);

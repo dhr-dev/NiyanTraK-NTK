@@ -21,6 +21,103 @@ pub struct AppState {
     pub export_on_shutdown: AtomicBool,
 }
 
+#[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct WidgetConfig {
+    pub show_temp: bool,
+    pub show_tdp: bool,
+    pub show_fan: bool,
+    pub show_profiles: bool,
+}
+
+impl Default for WidgetConfig {
+    fn default() -> Self {
+        Self {
+            show_temp: true,
+            show_tdp: true,
+            show_fan: true,
+            show_profiles: true,
+        }
+    }
+}
+
+#[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct AppConfig {
+    pub minimize_to_tray: bool,
+    pub start_on_startup: bool,
+    pub log_export_schedule: String,
+    pub custom_log_export_hours: u32,
+    pub export_on_shutdown: bool,
+    pub active_profile_name: String,
+    pub custom_tdp: u32,
+    pub custom_temp_limit: u32,
+    pub fan_level: u32,
+    pub fan_enabled: bool,
+    pub smart_fan_config: SmartFanConfig,
+    pub widget: WidgetConfig,
+}
+
+impl Default for AppConfig {
+    fn default() -> Self {
+        Self {
+            minimize_to_tray: false,
+            start_on_startup: false,
+            log_export_schedule: "disabled".to_string(),
+            custom_log_export_hours: 1,
+            export_on_shutdown: false,
+            active_profile_name: "laptop".to_string(),
+            custom_tdp: 35,
+            custom_temp_limit: 80,
+            fan_level: 30,
+            fan_enabled: false,
+            smart_fan_config: SmartFanConfig::default(),
+            widget: WidgetConfig::default(),
+        }
+    }
+}
+
+fn get_config_path(app: &tauri::AppHandle) -> Result<std::path::PathBuf, String> {
+    let app_dir = app.path().app_data_dir().map_err(|e| e.to_string())?;
+    std::fs::create_dir_all(&app_dir).map_err(|e| format!("Failed to create AppData folder: {}", e))?;
+    Ok(app_dir.join("app_config.toml"))
+}
+
+fn load_config_internal(app: &tauri::AppHandle) -> AppConfig {
+    if let Ok(path) = get_config_path(app) {
+        if path.exists() {
+            if let Ok(content) = std::fs::read_to_string(&path) {
+                if let Ok(config) = toml::from_str::<AppConfig>(&content) {
+                    return config;
+                }
+            }
+        }
+    }
+    AppConfig::default()
+}
+
+fn save_config_internal(app: &tauri::AppHandle, config: &AppConfig) -> Result<(), String> {
+    let path = get_config_path(app)?;
+    let content = toml::to_string_pretty(config).map_err(|e| e.to_string())?;
+    std::fs::write(&path, content).map_err(|e| format!("Failed to write config: {}", e))?;
+    Ok(())
+}
+
+#[tauri::command]
+fn get_app_config(app: tauri::AppHandle) -> AppConfig {
+    load_config_internal(&app)
+}
+
+#[tauri::command]
+fn save_app_config(app: tauri::AppHandle, state: tauri::State<'_, AppState>, config: AppConfig) -> Result<(), String> {
+    state.minimize_to_tray.store(config.minimize_to_tray, Ordering::Relaxed);
+    state.export_on_shutdown.store(config.export_on_shutdown, Ordering::Relaxed);
+    if let Ok(mut smart_fan) = state.smart_fan.lock() {
+        smart_fan.config = config.smart_fan_config.clone();
+    }
+    save_config_internal(&app, &config)
+}
+
 #[tauri::command]
 fn set_minimize_to_tray(state: tauri::State<'_, AppState>, enabled: bool) {
     state.minimize_to_tray.store(enabled, Ordering::Relaxed);
@@ -338,9 +435,57 @@ pub fn run() {
             export_debug_logs,
             set_autostart,
             get_autostart,
-            set_export_on_shutdown
+            set_export_on_shutdown,
+            get_app_config,
+            save_app_config
         ])
         .setup(|app| {
+            // Load and reapply settings immediately on boot
+            let config = load_config_internal(app.app_handle());
+            
+            // 1. Sync AppState parameters
+            let state = app.state::<AppState>();
+            state.minimize_to_tray.store(config.minimize_to_tray, Ordering::Relaxed);
+            state.export_on_shutdown.store(config.export_on_shutdown, Ordering::Relaxed);
+            if let Ok(mut smart_fan) = state.smart_fan.lock() {
+                smart_fan.config = config.smart_fan_config.clone();
+            }
+
+            // 2. Reapply hardware settings (TDP / Temp limits / Fan speed)
+            println!("[Boot Config] Reapplying stored profile settings...");
+            if config.active_profile_name == "battery" ||
+               config.active_profile_name == "laptop" ||
+               config.active_profile_name == "table" ||
+               config.active_profile_name == "performance" ||
+               config.active_profile_name == "extreme" {
+                // Apply standard profile limit
+                match get_profile(&config.active_profile_name) {
+                    Some(p) => {
+                        let res = apply_profile(p);
+                        println!("[Boot Config] Profile '{}' applied: {}", config.active_profile_name, res.trim());
+                    }
+                    None => {
+                        let res = set_custom_limits(config.custom_tdp, config.custom_temp_limit);
+                        println!("[Boot Config] Fallback limits applied: Success = {}", res.success);
+                    }
+                }
+            } else {
+                // For custom presets or manual custom adjustments, apply the saved raw values
+                let res = set_custom_limits(config.custom_tdp, config.custom_temp_limit);
+                println!("[Boot Config] Custom/Preset limits applied: Success = {}", res.success);
+                
+                // If smart fan is enabled, it will run automatically. Otherwise apply manual fan level if enabled.
+                if !config.smart_fan_config.enabled {
+                    if config.fan_enabled {
+                        let padded = format!("{:02}", config.fan_level);
+                        let res_fan = apply_fan_mode(&format!("{}:{}", padded, padded));
+                        println!("[Boot Config] Manual Fan Level applied: {}", res_fan.trim());
+                    } else {
+                        apply_fan_mode("0:0");
+                        println!("[Boot Config] Fan set to Auto/HP Control");
+                    }
+                }
+            }
             // Check command line arguments
             let args: Vec<String> = std::env::args().collect();
             let launch_as_widget = args.contains(&"--widget".to_string());

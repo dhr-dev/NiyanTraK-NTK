@@ -551,7 +551,7 @@ export class SettingsPanelComponent implements OnInit {
   }
 
   async ngOnInit() {
-    this.loadSettings();
+    await this.loadSettings();
     this.checkWidgetStatus();
     this.updateLastExportTimeLabel();
     
@@ -578,37 +578,51 @@ export class SettingsPanelComponent implements OnInit {
     }
   }
 
-  loadSettings() {
+  async loadSettings() {
     try {
-      const stored = localStorage.getItem('niyantrak_settings');
-      if (stored) {
-        const parsed = JSON.parse(stored);
-        if (parsed) {
-          if (parsed.minimizeToTray !== undefined) this.settings.minimizeToTray = parsed.minimizeToTray;
-          if (parsed.startOnStartup !== undefined) this.settings.startOnStartup = parsed.startOnStartup;
-          if (parsed.logExportSchedule !== undefined) this.settings.logExportSchedule = parsed.logExportSchedule;
-          if (parsed.customLogExportHours !== undefined) this.settings.customLogExportHours = parsed.customLogExportHours;
-          if (parsed.exportOnShutdown !== undefined) this.settings.exportOnShutdown = parsed.exportOnShutdown;
-          if (parsed.widget) {
-            if (parsed.widget.showTemp !== undefined) this.settings.widget.showTemp = parsed.widget.showTemp;
-            if (parsed.widget.showTdp !== undefined) this.settings.widget.showTdp = parsed.widget.showTdp;
-            if (parsed.widget.showFan !== undefined) this.settings.widget.showFan = parsed.widget.showFan;
-            if (parsed.widget.showProfiles !== undefined) this.settings.widget.showProfiles = parsed.widget.showProfiles;
-          }
+      const config = await invoke<AppSettings>('get_app_config');
+      if (config) {
+        // Map widget config fields if present
+        this.settings.minimizeToTray = config.minimizeToTray ?? false;
+        this.settings.startOnStartup = config.startOnStartup ?? false;
+        this.settings.logExportSchedule = config.logExportSchedule ?? 'disabled';
+        this.settings.customLogExportHours = config.customLogExportHours ?? 1;
+        this.settings.exportOnShutdown = config.exportOnShutdown ?? false;
+        if (config.widget) {
+          this.settings.widget = {
+            showTemp: config.widget.showTemp ?? true,
+            showTdp: config.widget.showTdp ?? true,
+            showFan: config.widget.showFan ?? true,
+            showProfiles: config.widget.showProfiles ?? true
+          };
         }
       }
     } catch (e) {
-      console.error('Failed to load settings', e);
+      console.error('Failed to load settings from backend', e);
     }
   }
 
   async saveSettings() {
     try {
-      localStorage.setItem('niyantrak_settings', JSON.stringify(this.settings));
-      // Sync minimize to tray with Rust
-      await invoke('set_minimize_to_tray', { enabled: this.settings.minimizeToTray });
+      // Get the complete AppConfig structure from backend first, merge our settings panel updates, and save it
+      const currentConfig = await invoke<any>('get_app_config');
+      const mergedConfig = {
+        ...currentConfig,
+        minimizeToTray: this.settings.minimizeToTray,
+        startOnStartup: this.settings.startOnStartup,
+        logExportSchedule: this.settings.logExportSchedule,
+        customLogExportHours: this.settings.customLogExportHours,
+        exportOnShutdown: this.settings.exportOnShutdown,
+        widget: {
+          showTemp: this.settings.widget.showTemp,
+          showTdp: this.settings.widget.showTdp,
+          showFan: this.settings.widget.showFan,
+          showProfiles: this.settings.widget.showProfiles
+        }
+      };
+      await invoke('save_app_config', { config: mergedConfig });
     } catch (e) {
-      console.error('Failed to save settings', e);
+      console.error('Failed to save settings to backend', e);
     }
   }
 

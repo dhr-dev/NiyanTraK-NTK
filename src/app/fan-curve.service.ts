@@ -1,4 +1,5 @@
 import { Injectable, inject } from '@angular/core';
+import { invoke } from '@tauri-apps/api/core';
 import { RyzenService, SmartFanConfig, FanCurvePoint } from './ryzen.service';
 
 @Injectable({
@@ -32,11 +33,11 @@ export class FanCurveService {
     this.loadFromStorage();
   }
 
-  loadFromStorage() {
+  async loadFromStorage() {
     try {
-      const stored = localStorage.getItem(this.STORAGE_KEY);
-      if (stored) {
-        const parsed = JSON.parse(stored);
+      const config = await invoke<any>('get_app_config');
+      if (config && config.smartFanConfig) {
+        const parsed = config.smartFanConfig;
         this.config = {
           enabled: parsed.enabled ?? false,
           points: parsed.points || [...this.defaultPoints.map(p => ({ ...p }))],
@@ -47,7 +48,7 @@ export class FanCurveService {
         };
       }
     } catch (e) {
-      console.error('[FanCurveService] Failed to load config from storage:', e);
+      console.error('[FanCurveService] Failed to load config from backend:', e);
     }
   }
 
@@ -57,8 +58,12 @@ export class FanCurveService {
       points: [...config.points.map(p => ({ ...p }))]
     };
     try {
-      localStorage.setItem(this.STORAGE_KEY, JSON.stringify(this.config));
-      await this.ryzenService.setSmartFanConfig(this.config);
+      const currentConfig = await invoke<any>('get_app_config');
+      const mergedConfig = {
+        ...currentConfig,
+        smartFanConfig: this.config
+      };
+      await invoke('save_app_config', { config: mergedConfig });
     } catch (e) {
       console.error('[FanCurveService] Failed to save/sync config:', e);
       throw e;
@@ -72,6 +77,7 @@ export class FanCurveService {
 
   async syncWithBackend(): Promise<void> {
     try {
+      await this.loadFromStorage();
       await this.ryzenService.setSmartFanConfig(this.config);
     } catch (e) {
       console.error('[FanCurveService] Failed to sync config with backend:', e);

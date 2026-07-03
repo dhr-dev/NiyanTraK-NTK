@@ -427,40 +427,35 @@ export class AppComponent implements OnInit, OnDestroy {
 
   private scheduledExportInterval: any = null;
 
-  initScheduledLogExport() {
+  async initScheduledLogExport() {
     if (this.scheduledExportInterval) {
       clearInterval(this.scheduledExportInterval);
       this.scheduledExportInterval = null;
     }
 
-    const stored = localStorage.getItem('niyantrak_settings');
-    if (stored) {
-      try {
-        const parsed = JSON.parse(stored);
-        if (parsed) {
-          const schedule = parsed.logExportSchedule;
-          if (schedule && schedule !== 'disabled') {
-            // Check immediately on startup
-            this.checkScheduledLogExport();
-            // Then check every 1 minute
-            this.scheduledExportInterval = setInterval(() => {
-              this.checkScheduledLogExport();
-            }, 60000);
-          }
+    try {
+      const config = await invoke<any>('get_app_config');
+      if (config) {
+        const schedule = config.logExportSchedule;
+        if (schedule && schedule !== 'disabled') {
+          // Check immediately on startup
+          await this.checkScheduledLogExport();
+          // Then check every 1 minute
+          this.scheduledExportInterval = setInterval(async () => {
+            await this.checkScheduledLogExport();
+          }, 60000);
         }
-      } catch (e) {
-        console.error('Failed to init scheduled log export:', e);
       }
+    } catch (e) {
+      console.error('Failed to init scheduled log export:', e);
     }
   }
 
-  checkScheduledLogExport() {
-    const stored = localStorage.getItem('niyantrak_settings');
-    if (!stored) return;
+  async checkScheduledLogExport() {
     try {
-      const parsed = JSON.parse(stored);
-      if (!parsed) return;
-      const schedule = parsed.logExportSchedule;
+      const config = await invoke<any>('get_app_config');
+      if (!config) return;
+      const schedule = config.logExportSchedule;
       if (!schedule || schedule === 'disabled') return;
 
       let intervalHours = 1;
@@ -469,7 +464,7 @@ export class AppComponent implements OnInit, OnDestroy {
       } else if (schedule === '24h') {
         intervalHours = 24;
       } else if (schedule === 'custom') {
-        intervalHours = parsed.customLogExportHours;
+        intervalHours = config.customLogExportHours;
         if (intervalHours === undefined || intervalHours === null) {
           intervalHours = 1;
         }
@@ -481,7 +476,7 @@ export class AppComponent implements OnInit, OnDestroy {
       const now = Date.now();
 
       if (now - lastTime >= ms) {
-        this.runScheduledLogExport(now);
+        await this.runScheduledLogExport(now);
       }
     } catch (e) {
       console.error('Failed checking scheduled log export:', e);
@@ -502,14 +497,9 @@ export class AppComponent implements OnInit, OnDestroy {
 
   async syncSettingsWithRust() {
     try {
-      const stored = localStorage.getItem('niyantrak_settings');
-      if (stored) {
-        const parsed = JSON.parse(stored);
-        if (parsed) {
-          if (parsed.exportOnShutdown !== undefined) {
-            await invoke('set_export_on_shutdown', { enabled: parsed.exportOnShutdown });
-          }
-        }
+      const config = await invoke<any>('get_app_config');
+      if (config && config.exportOnShutdown !== undefined) {
+        await invoke('set_export_on_shutdown', { enabled: config.exportOnShutdown });
       }
     } catch (e) {
       console.error('Failed to sync settings with Rust on startup', e);
@@ -569,14 +559,59 @@ export class AppComponent implements OnInit, OnDestroy {
     this.startCpuStatusPolling();
     this.checkStressStatus();
     await this.loadPresets();
+    await this.loadBackendConfig();
     await this.syncMinimizeToTray();
     await this.fanCurveService.syncWithBackend();
     await this.syncSettingsWithRust();
     
-    this.initScheduledLogExport();
-    window.addEventListener('sync_log_schedule', () => {
-      this.initScheduledLogExport();
+    await this.initScheduledLogExport();
+    window.addEventListener('sync_log_schedule', async () => {
+      await this.initScheduledLogExport();
     });
+  }
+
+  async loadBackendConfig() {
+    try {
+      const config = await invoke<any>('get_app_config');
+      if (config) {
+        this.profileName = config.activeProfileName || '';
+        this.cpuTdp = config.customTdp ?? 35;
+        this.cpuTempLimit = config.customTempLimit ?? 80;
+        this.fanLevel = config.fanLevel ?? 30;
+        this.fanEnabled = config.fanEnabled ?? false;
+        
+        // Find if this is a standard profile to align the cpuMode
+        const p = this.profiles.find(item => item.name === this.profileName);
+        if (p) {
+          this.cpuMode = (p.isCustom ? 'custom' : p.name) as any;
+        } else if (this.profileName === 'custom') {
+          this.cpuMode = 'custom';
+        } else if (this.profileName) {
+          this.cpuMode = 'custom';
+        } else {
+          this.cpuMode = 'bed';
+        }
+      }
+    } catch (e) {
+      console.error('Failed to load backend config in app component', e);
+    }
+  }
+
+  async saveActiveProfileConfig() {
+    try {
+      const currentConfig = await invoke<any>('get_app_config');
+      const mergedConfig = {
+        ...currentConfig,
+        activeProfileName: this.profileName,
+        customTdp: this.cpuTdp,
+        customTempLimit: this.cpuTempLimit,
+        fanLevel: this.fanLevel,
+        fanEnabled: this.fanEnabled
+      };
+      await invoke('save_app_config', { config: mergedConfig });
+    } catch (e) {
+      console.error('Failed to save active profile config', e);
+    }
   }
 
   async updateStickyBehavior() {
@@ -592,12 +627,9 @@ export class AppComponent implements OnInit, OnDestroy {
 
   async syncMinimizeToTray() {
     try {
-      const stored = localStorage.getItem('niyantrak_settings');
-      if (stored) {
-        const settings = JSON.parse(stored);
-        if (settings.minimizeToTray !== undefined) {
-          await invoke('set_minimize_to_tray', { enabled: settings.minimizeToTray });
-        }
+      const config = await invoke<any>('get_app_config');
+      if (config && config.minimizeToTray !== undefined) {
+        await invoke('set_minimize_to_tray', { enabled: config.minimizeToTray });
       }
     } catch (e) {
       console.error('Failed to sync minimize to tray on startup', e);
@@ -689,6 +721,7 @@ export class AppComponent implements OnInit, OnDestroy {
       await new Promise(resolve => setTimeout(resolve, 600));
       this.showToast(`CPU Mode → ${label}`, 'success');
       this.pollCpuStatus();
+      await this.saveActiveProfileConfig();
     } else {
       this.showToast(res.message || 'Failed to set CPU mode.', 'error');
     }
@@ -707,6 +740,7 @@ export class AppComponent implements OnInit, OnDestroy {
       await new Promise(resolve => setTimeout(resolve, 600));
       this.showToast(`Limits set: TDP ${this.cpuTdp}W · Temp ${this.cpuTempLimit}°C`, 'success');
       this.pollCpuStatus();
+      await this.saveActiveProfileConfig();
     } else {
       this.showToast(res.message || 'Failed to set limits.', 'error');
     }
@@ -743,6 +777,7 @@ export class AppComponent implements OnInit, OnDestroy {
       console.log(`[Fan] ${res}`);
       await new Promise(resolve => setTimeout(resolve, 600));
       this.showToast(this.fanEnabled ? `Fan → ${this.getRpm(this.fanLevel)} RPM` : 'Fan → Auto', 'success');
+      await this.saveActiveProfileConfig();
     } catch (err) {
       this.showToast(`Failed to set fan: ${err}`, 'error');
     }
@@ -763,6 +798,7 @@ export class AppComponent implements OnInit, OnDestroy {
     } else if (mode === 'smart-auto') {
       this.fanEnabled = true;
       await this.fanCurveService.setEnabled(true);
+      await this.saveActiveProfileConfig();
     } else if (mode === 'manual') {
       this.fanEnabled = true;
       await this.fanCurveService.setEnabled(false);
@@ -926,6 +962,7 @@ export class AppComponent implements OnInit, OnDestroy {
       this.profileName = 'custom';
       this.cpuMode = 'custom';
       this.showToast('Custom TDP ready — adjust and apply.', 'info');
+      await this.saveActiveProfileConfig();
       return;
     }
     
@@ -958,6 +995,8 @@ export class AppComponent implements OnInit, OnDestroy {
 
       if (this.fanEnabled) {
         await this.applyFan();
+      } else {
+        await this.saveActiveProfileConfig();
       }
     }
   }
