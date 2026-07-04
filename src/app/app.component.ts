@@ -21,6 +21,7 @@ import { FooterStripComponent } from './components/footer-strip/footer-strip.com
 import { SettingsPanelComponent } from './components/settings-panel/settings-panel.component';
 import { WidgetComponent } from './components/widget/widget.component';
 import { FanCurvePanelComponent } from './components/fan-curve-panel/fan-curve-panel.component';
+import { WarningModalComponent } from './components/warning-modal/warning-modal.component';
 
 @Component({
   selector: 'app-root',
@@ -40,7 +41,8 @@ import { FanCurvePanelComponent } from './components/fan-curve-panel/fan-curve-p
     FooterStripComponent,
     SettingsPanelComponent,
     WidgetComponent,
-    FanCurvePanelComponent
+    FanCurvePanelComponent,
+    WarningModalComponent
   ],
   template: `
     <ng-container *ngIf="isWidget; else fullAppShell">
@@ -48,6 +50,13 @@ import { FanCurvePanelComponent } from './components/fan-curve-panel/fan-curve-p
     </ng-container>
 
     <ng-template #fullAppShell>
+      <app-warning-modal
+        *ngIf="showWarningModal"
+        [systemInfo]="systemInfo"
+        (accepted)="onWarningAccepted()"
+        (exit)="onWarningExit()"
+      ></app-warning-modal>
+
       <div class="app-shell">
 
         <!-- TOP BAR -->
@@ -299,6 +308,10 @@ export class AppComponent implements OnInit, OnDestroy {
   @ViewChild(FanCurvePanelComponent) fanCurvePanel?: FanCurvePanelComponent;
   @ViewChild(MonitorStripComponent) monitorStrip?: MonitorStripComponent;
 
+  // Warnings and Compatibility
+  showWarningModal = false;
+  systemInfo: { manufacturer: string; model: string; isHp: boolean } | null = null;
+
   // Navigation
   activePage: 'quick' | 'stress' | 'settings' | 'fancurve' = 'quick';
   fanCurveDirty = false;
@@ -539,6 +552,14 @@ export class AppComponent implements OnInit, OnDestroy {
     
     if (this.isWidget) {
       return;
+    }
+
+    try {
+      this.systemInfo = await invoke<any>('get_system_info');
+      const accepted = localStorage.getItem('ntk_disclaimer_accepted') === 'true';
+      this.showWarningModal = !accepted || !this.systemInfo?.isHp;
+    } catch (e) {
+      console.error('Failed to query system compatibility:', e);
     }
 
     // Initialize and track sticky behavior based on window state
@@ -1079,5 +1100,14 @@ export class AppComponent implements OnInit, OnDestroy {
     } catch (e) {
       console.error('Failed to toggle widget window', e);
     }
+  }
+
+  onWarningAccepted() {
+    localStorage.setItem('ntk_disclaimer_accepted', 'true');
+    this.showWarningModal = false;
+  }
+
+  onWarningExit() {
+    this.showWarningModal = false;
   }
 }

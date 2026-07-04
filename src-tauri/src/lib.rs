@@ -412,6 +412,62 @@ fn get_autostart() -> Result<bool, String> {
     Ok(output.status.success())
 }
 
+fn get_registry_value(key: &str, value: &str) -> Option<String> {
+    let mut cmd = std::process::Command::new("reg");
+    cmd.args(&["query", key, "/v", value]);
+    #[cfg(target_os = "windows")]
+    use std::os::windows::process::CommandExt;
+    #[cfg(target_os = "windows")]
+    cmd.creation_flags(0x08000000); // CREATE_NO_WINDOW
+    
+    if let Ok(output) = cmd.output() {
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        for line in stdout.lines() {
+            if line.contains(value) {
+                let parts: Vec<&str> = line.split("REG_SZ").collect();
+                if parts.len() >= 2 {
+                    return Some(parts[1].trim().to_string());
+                }
+            }
+        }
+    }
+    None
+}
+
+#[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct SystemInfo {
+    pub manufacturer: String,
+    pub model: String,
+    pub is_hp: bool,
+}
+
+#[tauri::command]
+fn get_system_info() -> SystemInfo {
+    #[cfg(target_os = "windows")]
+    {
+        let mfg = get_registry_value("HKLM\\HARDWARE\\DESCRIPTION\\System\\BIOS", "SystemManufacturer")
+            .unwrap_or_else(|| "UNKNOWN".to_string());
+        let model = get_registry_value("HKLM\\HARDWARE\\DESCRIPTION\\System\\BIOS", "SystemProductName")
+            .unwrap_or_else(|| "UNKNOWN".to_string());
+        let is_hp = mfg.to_uppercase().contains("HP") || mfg.to_uppercase().contains("HEWLETT-PACKARD");
+        
+        SystemInfo {
+            manufacturer: mfg,
+            model,
+            is_hp,
+        }
+    }
+    #[cfg(not(target_os = "windows"))]
+    {
+        SystemInfo {
+            manufacturer: "Generic".to_string(),
+            model: "Generic".to_string(),
+            is_hp: true,
+        }
+    }
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     match tauri::Builder::default()
@@ -437,7 +493,8 @@ pub fn run() {
             get_autostart,
             set_export_on_shutdown,
             get_app_config,
-            save_app_config
+            save_app_config,
+            get_system_info
         ])
         .setup(|app| {
             // Load and reapply settings immediately on boot
