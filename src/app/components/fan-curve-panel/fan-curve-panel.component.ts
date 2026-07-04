@@ -25,7 +25,7 @@ import { RyzenService, FanCurvePoint } from '../../ryzen.service';
           <!-- Advanced Checkbox with Danger Sign -->
           <label class="advanced-checkbox-label">
             <input type="checkbox" [(ngModel)]="config.advanced" (change)="onAdvancedChange()" class="adv-checkbox" />
-            <span class="adv-text">Advanced</span>
+            <span class="adv-text adv-text--danger">Disable Safety Limits (Unlock 0 RPM)</span>
             <span *ngIf="config.advanced" class="danger-icon" [class.blink-danger]="shouldBlinkDanger">⚠️</span>
           </label>
 
@@ -284,12 +284,17 @@ import { RyzenService, FanCurvePoint } from '../../ryzen.service';
     </div>
 
     <!-- Fullscreen Warning Overlay -->
-    <div class="warning-overlay" *ngIf="showAdvancedWarning" (click)="showAdvancedWarning = false">
+    <div class="warning-overlay" *ngIf="showAdvancedWarning" (click)="cancelAdvanced()">
       <div class="warning-modal" (click)="$event.stopPropagation()">
         <span class="warning-icon-large">⚠️</span>
         <h3 class="warning-modal-title">WARNING</h3>
         <p class="warning-modal-text">Fan turn-off at 0 RPM unlocked. Proceed with caution.</p>
-        <button class="warning-modal-btn" (click)="showAdvancedWarning = false">I Understand</button>
+        <div style="display: flex; gap: 12px; justify-content: center; width: 100%;">
+          <button class="warning-modal-btn" style="background: transparent; border: 1px solid rgba(255, 255, 255, 0.15); color: #cbd5e1;" (click)="cancelAdvanced()">Cancel</button>
+          <button class="warning-modal-btn" [disabled]="countdown > 0" (click)="acceptAdvanced()">
+            {{ countdown > 0 ? 'I Understand (' + countdown + 's)' : 'I Understand' }}
+          </button>
+        </div>
       </div>
     </div>
   `,
@@ -318,18 +323,18 @@ import { RyzenService, FanCurvePoint } from '../../ryzen.service';
     .header-actions { display: flex; align-items: center; gap: 10px; }
     
     .reset-btn {
-      background: rgba(239, 68, 68, 0.1);
-      border: 1px solid rgba(239, 68, 68, 0.35);
-      border-radius: 6px; color: #ef4444;
+      background: rgba(6, 182, 212, 0.1);
+      border: 1px solid rgba(6, 182, 212, 0.35);
+      border-radius: 6px; color: #06b6d4;
       font-size: 10px; font-weight: 600;
       padding: 4px 10px;
       transition: all 200ms ease;
       cursor: pointer;
     }
     .reset-btn:hover {
-      background: rgba(239, 68, 68, 0.2);
-      border-color: rgba(239, 68, 68, 0.5);
-      color: #f87171;
+      background: rgba(6, 182, 212, 0.2);
+      border-color: rgba(6, 182, 212, 0.5);
+      color: #22d3ee;
     }
 
     .live-speed-badge {
@@ -376,6 +381,10 @@ import { RyzenService, FanCurvePoint } from '../../ryzen.service';
       font-size: 10px;
       font-weight: 600;
       color: #ccc;
+    }
+    .adv-text--danger {
+      color: #ef4444 !important;
+      font-weight: bold !important;
     }
     .danger-icon {
       font-size: 11px;
@@ -800,10 +809,18 @@ import { RyzenService, FanCurvePoint } from '../../ryzen.service';
       cursor: pointer;
       transition: all 150ms ease;
     }
-    .warning-modal-btn:hover {
+    .warning-modal-btn:hover:not(:disabled) {
       background: rgba(239, 68, 68, 0.25);
       border-color: rgba(239, 68, 68, 0.6);
       box-shadow: 0 0 12px rgba(239, 68, 68, 0.2);
+    }
+    .warning-modal-btn:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+      background: rgba(255, 255, 255, 0.08) !important;
+      border-color: rgba(255, 255, 255, 0.08) !important;
+      color: #64748b !important;
+      box-shadow: none !important;
     }
   `]
 })
@@ -825,6 +842,8 @@ export class FanCurvePanelComponent implements OnInit, OnDestroy, DoCheck {
   pointsCollapsed = true; // collapsed by default per user request
   shouldBlinkDanger = false;
   showAdvancedWarning = false;
+  countdown = 3;
+  timer: any = null;
   @Output() showToast = new EventEmitter<{ message: string; type: 'success' | 'error' | 'info' }>();
   @Output() unsavedChanges = new EventEmitter<boolean>();
   private lastDirtyState = false;
@@ -926,6 +945,9 @@ export class FanCurvePanelComponent implements OnInit, OnDestroy, DoCheck {
   ngOnDestroy() {
     if (this.pollInterval) {
       clearInterval(this.pollInterval);
+    }
+    if (this.timer) {
+      clearInterval(this.timer);
     }
     this.unsavedChanges.emit(false);
   }
@@ -1144,6 +1166,17 @@ export class FanCurvePanelComponent implements OnInit, OnDestroy, DoCheck {
       setTimeout(() => {
         this.shouldBlinkDanger = false;
       }, 1200); // 3 * 400ms = 1200ms animation duration
+
+      this.countdown = 3;
+      if (this.timer) clearInterval(this.timer);
+      this.timer = setInterval(() => {
+        if (this.countdown > 0) {
+          this.countdown--;
+        } else {
+          clearInterval(this.timer);
+          this.timer = null;
+        }
+      }, 1000);
     } else {
       // Revert any levels below 8 back to 8
       let modified = false;
@@ -1156,6 +1189,20 @@ export class FanCurvePanelComponent implements OnInit, OnDestroy, DoCheck {
       if (modified) {
         this.onPointManualChange();
       }
+    }
+  }
+
+  acceptAdvanced() {
+    this.config.advanced = true;
+    this.showAdvancedWarning = false;
+  }
+
+  cancelAdvanced() {
+    this.config.advanced = false;
+    this.showAdvancedWarning = false;
+    if (this.timer) {
+      clearInterval(this.timer);
+      this.timer = null;
     }
   }
 

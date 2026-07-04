@@ -236,15 +236,36 @@ fn get_cpu_status(state: tauri::State<'_, AppState>) -> RyzenAdjResponse {
                 
                 if let Ok(mut smart_fan) = state.smart_fan.lock() {
                     is_enabled = smart_fan.config.enabled;
+                    let temp_val = obj.get("tctl_value").and_then(|v| v.as_f64()).unwrap_or(0.0);
+                    let skin_val = obj.get("apu_skin_value").and_then(|v| v.as_f64()).unwrap_or(0.0);
+                    
                     if is_enabled {
-                        if let Some(temp_val) = obj.get("tctl_value").and_then(|v| v.as_f64()) {
-                            let (applied_level, d_temp, was_instant, _changed) = process_smart_fan(temp_val, &mut *smart_fan);
-                            active_level = applied_level;
-                            decision_temp = d_temp;
-                            is_instant = was_instant;
-                        }
+                        let (applied_level, d_temp, was_instant, _changed) = process_smart_fan(temp_val, skin_val, &mut *smart_fan);
+                        active_level = applied_level;
+                        decision_temp = d_temp;
+                        is_instant = was_instant;
                     } else {
-                        active_level = smart_fan.last_applied_level;
+                        let manual_level = smart_fan.last_applied_level;
+                        if manual_level > 0 {
+                            let mut target_level = manual_level;
+                            let mut override_applied = false;
+                            
+                            if temp_val >= 95.0 || skin_val >= 56.0 {
+                                target_level = target_level.max(39);
+                                override_applied = true;
+                            } else if temp_val >= 90.0 || skin_val >= 52.0 {
+                                target_level = target_level.max(30);
+                                override_applied = true;
+                            }
+                            
+                            if override_applied && target_level != manual_level {
+                                let padded = format!("{:02}", target_level);
+                                apply_fan_mode(&format!("{}:{}", padded, padded));
+                            }
+                            active_level = target_level;
+                        } else {
+                            active_level = 0;
+                        }
                     }
                 }
                 

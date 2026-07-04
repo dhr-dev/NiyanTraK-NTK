@@ -132,7 +132,7 @@ pub fn interpolate_fan_level(temp: f64, points: &[FanCurvePoint]) -> u32 {
     selected_level
 }
 
-pub fn process_smart_fan(temp: f64, state: &mut SmartFanState) -> (u32, f64, bool, bool) {
+pub fn process_smart_fan(temp: f64, skin_temp: f64, state: &mut SmartFanState) -> (u32, f64, bool, bool) {
     if !state.config.enabled {
         return (0, 0.0, false, false);
     }
@@ -179,7 +179,14 @@ pub fn process_smart_fan(temp: f64, state: &mut SmartFanState) -> (u32, f64, boo
     };
 
     let target_level = interpolate_fan_level(decision_temp, &state.config.points);
-    let target_level = target_level.clamp(min_lvl, 39);
+    let mut target_level = target_level.clamp(min_lvl, 39);
+
+    // Safety overrides: force higher fan levels if temperatures get dangerously high
+    if temp >= 95.0 || skin_temp >= 56.0 {
+        target_level = target_level.max(39);
+    } else if temp >= 90.0 || skin_temp >= 52.0 {
+        target_level = target_level.max(30);
+    }
 
     let current_time = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
