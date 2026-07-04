@@ -373,10 +373,32 @@ NiyanTraK now features an ultra-compact desktop companion widget and complete na
 
 
 
+---
 
+## 14. Public Release Preparation & Safety Safeguards (v3.6.0) (2026-07-04)
 
+### 14.1 Rebranding to NiyanTraK
+- **NiyanTraK Rebrand**: Renamed all occurrences of `victus-deck` to `niyantrak`/`NiyanTraK` (using the capitalization NTK) to reflect support for HP Pavilion Gaming and HP Omen series laptops.
+- **Package Configuration**: Updated `package.json` name to `"niyantrak"`.
 
+### 14.2 Registry BIOS Check & Startup Disclaimers
+- **System Information Registry Query**: Implemented `get_system_info` in Rust backend (`lib.rs`) querying `HARDWARE\\DESCRIPTION\\System\\BIOS` registry values (`SystemManufacturer` and `SystemProductName`) to determine if the device is a compatible HP laptop in <5ms.
+- **First-Launch Warning Modal**: Introduced a modal dialog on first launch (`AppComponent` lifecycle) showing a strict release of liability disclaimer and compatibility warning. Includes a 5-second countdown timer before the accept button is unlocked to force user awareness.
 
+### 14.3 Thermal Safety Overrides (Safeguards)
+- **Safe Clamping Logic**: Modified `process_smart_fan` and `get_cpu_status` in the Rust backend to intercept temperature telemetry.
+  - If CPU Temperature $\ge$ 95°C or APU Skin Temperature $\ge$ 56°C: Forces fan speeds to Level 39 (maximum fan speed).
+  - If CPU Temperature $\ge$ 90°C or APU Skin Temperature $\ge$ 52°C: Forces fan speeds to *at least* Level 30 (high/balanced fan speed).
+- **Manual Mode Coverage**: Applies safeguards to manual fan sliders as well as smart fan curve decisions. Skipped under HP BIOS Auto mode.
 
+### 14.4 UI Stabilization & Advanced limits Toggles
+- **Advanced Mode Renaming & Styling**: Renamed "Advanced Mode" to "Disable Safety Limits (Unlock 0 RPM)", styled in bold red font to emphasize danger.
+- **Synchronized Checkboxes**: Placed matching checkboxes in both the Fan Curve panel and Main UI Fan card, backed by real-time `localAdvanced` status synchronization and `DoCheck` checks in the Angular frontend.
+- **3-Second Countdown Warnings**: Checking either advanced toggle triggers a fullscreen warning overlay with a 3-second button countdown before manual override settings (like Level 0 RPM) are accepted and saved.
+- **UI Shift and Jitter Elimination**:
+  - Replaced `*ngIf` button/badge footer swaps with static DOM nodes toggled using CSS `[style.display]` to eliminate rendering height jumps.
+  - Replaced Range Slider `[disabled]` attribute with `[style.pointer-events]` to bypass browser-specific disabled scrollbar layout height alterations.
+  - Added a `1px` transparent border to default segment tab buttons to prevent layout shifting on active border classes.
+  - Updated the Reset Defaults button in the fan curve panel to a premium Teal (`#06b6d4`) color.
 
 
