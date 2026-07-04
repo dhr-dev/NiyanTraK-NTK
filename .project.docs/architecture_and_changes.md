@@ -375,7 +375,7 @@ NiyanTraK now features an ultra-compact desktop companion widget and complete na
 
 ---
 
-## 14. Public Release Preparation & Safety Safeguards (v3.6.0) (2026-07-04)
+## 14. Public Release Preparation & Safety Safeguards (v4.0.0-beta.1) (2026-07-04)
 
 ### 14.1 Rebranding to NiyanTraK
 - **NiyanTraK Rebrand**: Renamed all occurrences of `victus-deck` to `niyantrak`/`NiyanTraK` (using the capitalization NTK) to reflect support for HP Pavilion Gaming and HP Omen series laptops.
