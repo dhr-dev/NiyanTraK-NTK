@@ -8,6 +8,16 @@ import { CommonModule } from '@angular/common';
   template: `
     <!-- BEZEL RIBBONS: Widget + Stress on right edge -->
     <div class="bezel-wrap">
+      <!-- Reset Peak button -->
+      <button class="bezel-btn"
+        (click)="resetPeaks.emit()"
+        title="Reset peak telemetry values"
+      >
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="15" height="15" style="display: block;">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99" />
+        </svg>
+      </button>
+
       <!-- Widget ribbon: always visible, toggles desktop widget -->
       <div class="ribbon ribbon--widget"
         (click)="toggleWidget.emit()"
@@ -37,12 +47,39 @@ import { CommonModule } from '@angular/common';
     .bezel-wrap {
       position: absolute;
       right: 0;
-      top: 44px;
+      top: 10px;
       z-index: 40;
       pointer-events: none;
       display: flex;
       flex-direction: column;
       gap: 6px;
+    }
+    .bezel-btn {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      background: #111827;
+      border: 1px solid #4f46e5;
+      color: #818cf8;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      pointer-events: auto;
+      margin-left: auto;
+      margin-right: 13px;
+      margin-bottom: 4px;
+      transition: transform 200ms ease, background 150ms, border-color 150ms, color 150ms, box-shadow 150ms ease;
+    }
+    .bezel-btn:hover {
+      transform: scale(1.1);
+      background: #1e1b4b;
+      border-color: #6366f1;
+      color: #a5b4fc;
+      box-shadow: 0 0 10px rgba(99, 102, 241, 0.45);
+    }
+    .bezel-btn:active {
+      transform: scale(0.95);
     }
     /* Shared ribbon base: narrowed to 58px for a cleaner bezel profile */
     .ribbon {
@@ -118,4 +155,5 @@ export class BezelStripsComponent {
   @Input() stressActive: boolean = false;
   @Output() toggleStress = new EventEmitter<void>();
   @Output() toggleWidget = new EventEmitter<void>();
+  @Output() resetPeaks = new EventEmitter<void>();
 }

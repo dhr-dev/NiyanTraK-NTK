@@ -52,7 +52,7 @@ pub fn get_recent_logs() -> String {
 
         let mut out = String::new();
         out.push_str("===============================================\n");
-        out.push_str("          VictusDeck 2m Debug Logs             \n");
+        out.push_str("          NiyanTraK 2m Debug Logs              \n");
         out.push_str("===============================================\n\n");
 
         if buffer.is_empty() {

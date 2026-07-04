@@ -1,6 +1,20 @@
 import { Injectable } from '@angular/core';
 import { invoke } from '@tauri-apps/api/core';
 
+export interface FanCurvePoint {
+  temp: number;
+  level: number;
+}
+
+export interface SmartFanConfig {
+  enabled: boolean;
+  points: FanCurvePoint[];
+  instant_spool_temp: number;
+  average_poll_size: number;
+  cooldown_secs: number;
+  advanced: boolean;
+}
+
 export interface RyzenAdjResponse {
   success: boolean;
   message: string;
@@ -23,6 +37,9 @@ export interface RyzenAdjResponse {
     cpu_name?: string;
     stdout?: string;
     stderr?: string;
+    smart_fan_enabled?: boolean;
+    smart_fan_active_level?: number;
+    smart_fan_decision_temp?: number;
   };
 }
 
@@ -77,9 +94,14 @@ export class RyzenService {
     }
   }
 
+  latestLimits: any = null;
+
   async getStatus(): Promise<RyzenAdjResponse> {
     try {
       const res = await invoke<RyzenAdjResponse>('get_cpu_status');
+      if (res.success && res.data) {
+        this.latestLimits = res.data;
+      }
       return res;
     } catch (err) {
       console.error('[RyzenService] Failed to get CPU status:', err);
@@ -114,6 +136,24 @@ export class RyzenService {
     } catch (err) {
       console.error('[RyzenService] Failed to query CPU Stress status:', err);
       return false;
+    }
+  }
+
+  async setSmartFanConfig(config: SmartFanConfig): Promise<void> {
+    try {
+      await invoke('set_smart_fan_config', { config });
+    } catch (err) {
+      console.error('[RyzenService] Failed to set Smart Fan Config:', err);
+      throw err;
+    }
+  }
+
+  async getSmartFanConfig(): Promise<SmartFanConfig> {
+    try {
+      return await invoke<SmartFanConfig>('get_smart_fan_config');
+    } catch (err) {
+      console.error('[RyzenService] Failed to get Smart Fan Config:', err);
+      throw err;
     }
   }
 }

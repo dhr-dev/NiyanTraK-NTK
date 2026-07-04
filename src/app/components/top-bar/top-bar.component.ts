@@ -16,6 +16,7 @@ import { CommonModule } from '@angular/common';
 
       <!-- DYNAMIC ISLAND CAPSULE -->
       <div class="dynamic-island-container">
+        <!-- Main Status Island -->
         <div class="dynamic-island" [class.dynamic-island--active]="activeToast" [class.dynamic-island--success]="activeToast?.type === 'success'" [class.dynamic-island--error]="activeToast?.type === 'error'" [class.dynamic-island--info]="activeToast?.type === 'info'">
           <ng-container *ngIf="!activeToast; else toastTemplate">
             <!-- Idle state: displays active profile -->
@@ -27,10 +28,21 @@ import { CommonModule } from '@angular/common';
             <span class="island-icon-toast">
               <ng-container *ngIf="activeToast.type === 'success'">✓</ng-container>
               <ng-container *ngIf="activeToast.type === 'error'">⚠</ng-container>
-              <ng-container *ngIf="activeToast.type === 'info'">ℹ</ng-container>
+              <ng-container *ngIf="activeToast.type === 'info'">
+                <svg class="island-spinner" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" width="10" height="10" style="display: block;">
+                  <circle cx="12" cy="12" r="10" stroke="rgba(59, 130, 246, 0.2)"></circle>
+                  <path d="M12 2a10 10 0 0 1 10 10" stroke="#3b82f6" stroke-linecap="round"></path>
+                </svg>
+              </ng-container>
             </span>
             <span class="island-message-toast">{{ activeToast.message }}</span>
           </ng-template>
+        </div>
+
+        <!-- Twin Warning Island -->
+        <div class="dynamic-island dynamic-island--warning" *ngIf="unsavedChanges">
+          <span class="island-icon warning-pulse">⚠️</span>
+          <span class="island-label warning-text">UNSAVED CHANGES</span>
         </div>
       </div>
 
@@ -76,6 +88,7 @@ import { CommonModule } from '@angular/common';
       align-items: center;
       z-index: 1000;
       pointer-events: none;
+      gap: 12px;
     }
     .dynamic-island {
       pointer-events: auto;
@@ -115,6 +128,39 @@ import { CommonModule } from '@angular/common';
       animation: island-spring 350ms cubic-bezier(0.175, 0.885, 0.32, 1.275);
     }
     
+    .dynamic-island--warning {
+      border-color: rgba(245, 158, 11, 0.4);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.5), inset 0 1px 1px rgba(255,255,255,0.03), 0 0 12px rgba(245, 158, 11, 0.15);
+      animation: island-entry 350ms cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
+    
+    .warning-pulse {
+      color: #f59e0b;
+      animation: warning-blink 1.5s infinite ease-in-out;
+      display: inline-block;
+    }
+    
+    .warning-text {
+      color: #f59e0b;
+      font-weight: 700;
+    }
+    
+    @keyframes island-entry {
+      0% {
+        opacity: 0;
+        transform: scale(0.8) translateY(-10px);
+      }
+      100% {
+        opacity: 1;
+        transform: scale(1) translateY(0);
+      }
+    }
+    
+    @keyframes warning-blink {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.6; transform: scale(1.1); }
+    }
+    
     .dynamic-island--success {
       border-color: #22c55e;
       box-shadow: 0 0 15px rgba(34, 197, 94, 0.25), 0 8px 32px rgba(0,0,0,0.7);
@@ -144,6 +190,14 @@ import { CommonModule } from '@angular/common';
     .dynamic-island--error .island-icon-toast { background: rgba(239,68,68,0.15); color: #ef4444; }
     .dynamic-island--info .island-icon-toast { background: rgba(59,130,246,0.15); color: #3b82f6; }
     
+    .island-spinner {
+      animation: spin 1s linear infinite;
+    }
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+    
     .island-message-toast {
       font-size: 12px;
       font-weight: 500;
@@ -166,4 +220,5 @@ export class TopBarComponent {
   @Input() activeProfileLabel: string = '';
   @Input() activeToast: any = null;
   @Input() cpuName: string = '';
+  @Input() unsavedChanges: boolean = false;
 }

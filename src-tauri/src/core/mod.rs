@@ -3,3 +3,4 @@ pub mod executor;pub mod fan;
 pub mod ryzen_adj;
 pub mod stress;
 pub mod logger;
+pub mod ps_session;

@@ -1,9 +1,11 @@
-import { Component, inject, OnInit, OnDestroy } from '@angular/core';
+import { Component, inject, OnInit, OnDestroy, ViewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { invoke } from '@tauri-apps/api/core';
+import { getCurrentWebviewWindow } from '@tauri-apps/api/webviewWindow';
 import { RyzenService } from './ryzen.service';
-import { DEFAULT_PROFILES } from './presets.config';
+import DEFAULT_PROFILES from './config/presets.json';
+import { FanCurveService } from './fan-curve.service';
 
 // Modular Component Imports
 import { NavRailComponent } from './components/nav-rail/nav-rail.component';
@@ -18,6 +20,8 @@ import { StressPanelComponent } from './components/stress-panel/stress-panel.com
 import { FooterStripComponent } from './components/footer-strip/footer-strip.component';
 import { SettingsPanelComponent } from './components/settings-panel/settings-panel.component';
 import { WidgetComponent } from './components/widget/widget.component';
+import { FanCurvePanelComponent } from './components/fan-curve-panel/fan-curve-panel.component';
+import { WarningModalComponent } from './components/warning-modal/warning-modal.component';
 
 @Component({
   selector: 'app-root',
@@ -36,7 +40,9 @@ import { WidgetComponent } from './components/widget/widget.component';
     StressPanelComponent,
     FooterStripComponent,
     SettingsPanelComponent,
-    WidgetComponent
+    WidgetComponent,
+    FanCurvePanelComponent,
+    WarningModalComponent
   ],
   template: `
     <ng-container *ngIf="isWidget; else fullAppShell">
@@ -44,6 +50,13 @@ import { WidgetComponent } from './components/widget/widget.component';
     </ng-container>
 
     <ng-template #fullAppShell>
+      <app-warning-modal
+        *ngIf="showWarningModal"
+        [systemInfo]="systemInfo"
+        (accepted)="onWarningAccepted()"
+        (exit)="onWarningExit()"
+      ></app-warning-modal>
+
       <div class="app-shell">
 
         <!-- TOP BAR -->
@@ -52,13 +65,14 @@ import { WidgetComponent } from './components/widget/widget.component';
           [activeProfileLabel]="activeProfileLabel"
           [activeToast]="activeToast"
           [cpuName]="cpuName"
+          [unsavedChanges]="fanCurveDirty"
         ></app-top-bar>
 
         <!-- MAIN CONTAINER -->
         <div class="main-container">
 
           <!-- LEFT: NAV RAIL -->
-          <app-nav-rail [activePage]="activePage" (pageChange)="activePage = $event"></app-nav-rail>
+          <app-nav-rail [activePage]="activePage" (pageChange)="changePage($event)"></app-nav-rail>
 
           <div class="main-frame-body">
             <!-- STRESS BANNER -->
@@ -69,18 +83,20 @@ import { WidgetComponent } from './components/widget/widget.component';
               (stop)="toggleStressTest()"
             ></app-stress-banner>
 
-            <!-- MONITOR STRIP -->
-            <app-monitor-strip
+            <!-- MONITOR STRIP (Sticky Mode, maximized or fullscreen) -->
+            <app-monitor-strip *ngIf="isStickyMonitor"
               [metrics]="monitorMetrics"
               [peakFast]="peakFastPpt"
               [peakSlow]="peakSlowPpt"
               [peakTemp]="peakTemp"
               [dgpuBrand]="dgpuBrand"
+              [compactMode]="activePage === 'fancurve' || activePage === 'settings'"
               (reset)="resetPeaks()"
+              [isSticky]="true"
             ></app-monitor-strip>
 
-            <!-- PROFILES DRAWER -->
-            <app-profiles-drawer *ngIf="activePage === 'quick'"
+            <!-- PROFILES DRAWER (Sticky Mode, maximized or fullscreen) -->
+            <app-profiles-drawer *ngIf="isStickyMonitor && activePage === 'quick'"
               [open]="profilesOpen"
               [currentProfile]="profileName"
               [profiles]="profiles"
@@ -88,6 +104,7 @@ import { WidgetComponent } from './components/widget/widget.component';
               (savePreset)="saveCustomPreset($event)"
               (deletePreset)="deleteCustomPreset($event)"
               (togglePin)="togglePresetPin($event)"
+              [isSticky]="true"
             ></app-profiles-drawer>
 
             <!-- BEZEL RIBBONS: Profiles + Stress on right edge -->
@@ -95,20 +112,47 @@ import { WidgetComponent } from './components/widget/widget.component';
               [stressActive]="stressActive"
               (toggleStress)="toggleStressTest()"
               (toggleWidget)="toggleWidget()"
+              (resetPeaks)="resetPeaks()"
             ></app-bezel-strips>
 
             <!-- VIEWPORT: SCROLLABLE PAGES -->
             <main class="viewport">
+              <!-- MONITOR STRIP (Non-Sticky Scrollable Mode, when not maximized) -->
+              <app-monitor-strip *ngIf="!isStickyMonitor"
+                [metrics]="monitorMetrics"
+                [peakFast]="peakFastPpt"
+                [peakSlow]="peakSlowPpt"
+                [peakTemp]="peakTemp"
+                [dgpuBrand]="dgpuBrand"
+                [compactMode]="activePage === 'fancurve' || activePage === 'settings'"
+                (reset)="resetPeaks()"
+                [isSticky]="false"
+                style="margin-bottom: 12px; display: block;"
+              ></app-monitor-strip>
+
+              <!-- PROFILES DRAWER (Non-Sticky Scrollable Mode, when not maximized) -->
+              <app-profiles-drawer *ngIf="!isStickyMonitor && activePage === 'quick'"
+                [open]="profilesOpen"
+                [currentProfile]="profileName"
+                [profiles]="profiles"
+                (selectProfile)="onSelectProfile($event)"
+                (savePreset)="saveCustomPreset($event)"
+                (deletePreset)="deleteCustomPreset($event)"
+                (togglePin)="togglePresetPin($event)"
+                [isSticky]="false"
+                style="margin-bottom: 12px; display: block;"
+              ></app-profiles-drawer>
 
               <!-- QUICK CONTROL PAGE -->
               <div *ngIf="activePage === 'quick'" class="page-quick">
                 <!-- FAN CONTROL CARD -->
                 <app-fan-control
-                  [enabled]="fanEnabled"
+                  [mode]="fanMode"
                   [level]="fanLevel"
-                  (toggle)="toggleFanControl()"
+                  (modeChange)="setFanMode($event)"
                   (levelChange)="fanLevel = $event"
                   (apply)="applyFan()"
+                  (configureCurve)="changePage('fancurve')"
                 ></app-fan-control>
 
                 <!-- RIGHT COLUMN: CPU Power limit stacked -->
@@ -137,7 +181,10 @@ import { WidgetComponent } from './components/widget/widget.component';
               ></app-stress-panel>
 
               <!-- SYSTEM SETTINGS PAGE -->
-              <app-settings-panel *ngIf="activePage === 'settings'"></app-settings-panel>
+              <app-settings-panel *ngIf="activePage === 'settings'" (showToast)="showToast($event.message, $event.type)"></app-settings-panel>
+
+              <!-- FAN CURVE PANEL -->
+              <app-fan-curve-panel *ngIf="activePage === 'fancurve'" (showToast)="showToast($event.message, $event.type)" (unsavedChanges)="fanCurveDirty = $event"></app-fan-curve-panel>
 
             </main>
 
@@ -197,7 +244,7 @@ import { WidgetComponent } from './components/widget/widget.component';
       flex: 1;
       min-height: 0;
       overflow-y: auto;
-      padding: 16px 59px 16px 16px;
+      padding: 8px 59px 16px 16px;
     }
     .viewport::-webkit-scrollbar { width: 4px; }
     .viewport::-webkit-scrollbar-track { background: transparent; }
@@ -242,17 +289,37 @@ import { WidgetComponent } from './components/widget/widget.component';
     .toast--success .toast-icon { background: rgba(34,197,94,0.15); color: #22c55e; }
     .toast--error   .toast-icon { background: rgba(239,68,68,0.15);  color: #ef4444; }
     .toast--info    .toast-icon { background: rgba(59,130,246,0.15); color: #3b82f6; }
+
+    @media (max-width: 750px) {
+      .page-quick {
+        flex-direction: column;
+        align-items: stretch;
+      }
+      .viewport {
+        padding: 8px 16px 16px 16px;
+      }
+    }
   `]
 })
 export class AppComponent implements OnInit, OnDestroy {
   private ryzenService = inject(RyzenService);
+  private fanCurveService = inject(FanCurveService);
+
+  @ViewChild(FanCurvePanelComponent) fanCurvePanel?: FanCurvePanelComponent;
+  @ViewChild(MonitorStripComponent) monitorStrip?: MonitorStripComponent;
+
+  // Warnings and Compatibility
+  showWarningModal = false;
+  systemInfo: { manufacturer: string; model: string; isHp: boolean } | null = null;
 
   // Navigation
-  activePage: 'quick' | 'stress' | 'settings' = 'quick';
+  activePage: 'quick' | 'stress' | 'settings' | 'fancurve' = 'quick';
+  fanCurveDirty = false;
   isWidget = false;
   profilesOpen = true;
   cpuName = '';
   dgpuBrand = 'UNKNOWN';
+  isStickyMonitor = true;
 
   // Fan state
   fanLevel = 30;
@@ -319,7 +386,8 @@ export class AppComponent implements OnInit, OnDestroy {
       apuSkin:      limits?.apu_skin_value ?? 0,
       apuSkinLimit: limits?.apu_skin_limit ?? 0,
       dgpuSkin:     limits?.dgpu_skin_value ?? 0,
-      dgpuSkinLimit: limits?.dgpu_skin_limit ?? 0
+      dgpuSkinLimit: limits?.dgpu_skin_limit ?? 0,
+      activeFanLevel: limits?.smart_fan_active_level ?? 0
     };
   }
 
@@ -359,6 +427,98 @@ export class AppComponent implements OnInit, OnDestroy {
 
   // ── Helpers ──
 
+  changePage(page: 'quick' | 'stress' | 'settings' | 'fancurve') {
+    this.activePage = page;
+    this.fanCurveDirty = false;
+  }
+
+  getFormattedTimestamp(): string {
+    const now = new Date();
+    const pad = (n: number) => String(n).padStart(2, '0');
+    return `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}_${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`;
+  }
+
+  private scheduledExportInterval: any = null;
+
+  async initScheduledLogExport() {
+    if (this.scheduledExportInterval) {
+      clearInterval(this.scheduledExportInterval);
+      this.scheduledExportInterval = null;
+    }
+
+    try {
+      const config = await invoke<any>('get_app_config');
+      if (config) {
+        const schedule = config.logExportSchedule;
+        if (schedule && schedule !== 'disabled') {
+          // Check immediately on startup
+          await this.checkScheduledLogExport();
+          // Then check every 1 minute
+          this.scheduledExportInterval = setInterval(async () => {
+            await this.checkScheduledLogExport();
+          }, 60000);
+        }
+      }
+    } catch (e) {
+      console.error('Failed to init scheduled log export:', e);
+    }
+  }
+
+  async checkScheduledLogExport() {
+    try {
+      const config = await invoke<any>('get_app_config');
+      if (!config) return;
+      const schedule = config.logExportSchedule;
+      if (!schedule || schedule === 'disabled') return;
+
+      let intervalHours = 1;
+      if (schedule === '6h') {
+        intervalHours = 6;
+      } else if (schedule === '24h') {
+        intervalHours = 24;
+      } else if (schedule === 'custom') {
+        intervalHours = config.customLogExportHours;
+        if (intervalHours === undefined || intervalHours === null) {
+          intervalHours = 1;
+        }
+      }
+
+      const ms = intervalHours * 3600000;
+      const lastTimeStr = localStorage.getItem('last_scheduled_export_time');
+      const lastTime = lastTimeStr ? parseInt(lastTimeStr, 10) : 0;
+      const now = Date.now();
+
+      if (now - lastTime >= ms) {
+        await this.runScheduledLogExport(now);
+      }
+    } catch (e) {
+      console.error('Failed checking scheduled log export:', e);
+    }
+  }
+
+  async runScheduledLogExport(timestamp: number) {
+    try {
+      localStorage.setItem('last_scheduled_export_time', String(timestamp));
+      const timestampStr = this.getFormattedTimestamp();
+      const res = await invoke<string>('export_debug_logs', { isScheduled: true, timestamp: timestampStr });
+      console.log('[Scheduled Exporter] Exported to:', res);
+      window.dispatchEvent(new Event('refresh_last_export_time'));
+    } catch (e) {
+      console.error('[Scheduled Exporter Error]', e);
+    }
+  }
+
+  async syncSettingsWithRust() {
+    try {
+      const config = await invoke<any>('get_app_config');
+      if (config && config.exportOnShutdown !== undefined) {
+        await invoke('set_export_on_shutdown', { enabled: config.exportOnShutdown });
+      }
+    } catch (e) {
+      console.error('Failed to sync settings with Rust on startup', e);
+    }
+  }
+
   metricPct(val: number, limit: number): number {
     if (!limit) return 0;
     return Math.min(Math.round((val / limit) * 100), 100);
@@ -376,6 +536,12 @@ export class AppComponent implements OnInit, OnDestroy {
     this.peakSlowPpt = 0;
     this.peakTemp = 0;
     this.peakStapm = 0;
+    this.monitorStrip?.resetGraph();
+    if (this.activePage === 'fancurve' && this.fanCurvePanel) {
+      this.fanCurvePanel.discardChanges();
+    } else {
+      this.showToast('Peak telemetry & graph history reset!', 'success');
+    }
   }
 
   // ── Lifecycle ──
@@ -388,20 +554,103 @@ export class AppComponent implements OnInit, OnDestroy {
       return;
     }
 
+    try {
+      this.systemInfo = await invoke<any>('get_system_info');
+      const accepted = localStorage.getItem('ntk_disclaimer_accepted') === 'true';
+      this.showWarningModal = !accepted || !this.systemInfo?.isHp;
+    } catch (e) {
+      console.error('Failed to query system compatibility:', e);
+    }
+
+    // Initialize and track sticky behavior based on window state
+    this.updateStickyBehavior();
+    window.addEventListener('resize', () => {
+      this.updateStickyBehavior();
+    });
+
+    try {
+      const win = getCurrentWebviewWindow();
+      win.listen('tauri://resize', () => {
+        this.updateStickyBehavior();
+      });
+    } catch (e) {
+      console.error('Failed to listen to tauri://resize', e);
+    }
+
     this.startCpuStatusPolling();
     this.checkStressStatus();
     await this.loadPresets();
+    await this.loadBackendConfig();
     await this.syncMinimizeToTray();
+    await this.fanCurveService.syncWithBackend();
+    await this.syncSettingsWithRust();
+    
+    await this.initScheduledLogExport();
+    window.addEventListener('sync_log_schedule', async () => {
+      await this.initScheduledLogExport();
+    });
+  }
+
+  async loadBackendConfig() {
+    try {
+      const config = await invoke<any>('get_app_config');
+      if (config) {
+        this.profileName = config.activeProfileName || '';
+        this.cpuTdp = config.customTdp ?? 35;
+        this.cpuTempLimit = config.customTempLimit ?? 80;
+        this.fanLevel = config.fanLevel ?? 30;
+        this.fanEnabled = config.fanEnabled ?? false;
+        
+        // Find if this is a standard profile to align the cpuMode
+        const p = this.profiles.find(item => item.name === this.profileName);
+        if (p) {
+          this.cpuMode = (p.isCustom ? 'custom' : p.name) as any;
+        } else if (this.profileName === 'custom') {
+          this.cpuMode = 'custom';
+        } else if (this.profileName) {
+          this.cpuMode = 'custom';
+        } else {
+          this.cpuMode = 'bed';
+        }
+      }
+    } catch (e) {
+      console.error('Failed to load backend config in app component', e);
+    }
+  }
+
+  async saveActiveProfileConfig() {
+    try {
+      const currentConfig = await invoke<any>('get_app_config');
+      const mergedConfig = {
+        ...currentConfig,
+        activeProfileName: this.profileName,
+        customTdp: this.cpuTdp,
+        customTempLimit: this.cpuTempLimit,
+        fanLevel: this.fanLevel,
+        fanEnabled: this.fanEnabled
+      };
+      await invoke('save_app_config', { config: mergedConfig });
+    } catch (e) {
+      console.error('Failed to save active profile config', e);
+    }
+  }
+
+  async updateStickyBehavior() {
+    try {
+      const win = getCurrentWebviewWindow();
+      const maximized = await win.isMaximized();
+      const fullscreen = await win.isFullscreen();
+      this.isStickyMonitor = maximized || fullscreen;
+    } catch (e) {
+      this.isStickyMonitor = window.innerWidth > 750;
+    }
   }
 
   async syncMinimizeToTray() {
     try {
-      const stored = localStorage.getItem('niyantrak_settings');
-      if (stored) {
-        const settings = JSON.parse(stored);
-        if (settings.minimizeToTray !== undefined) {
-          await invoke('set_minimize_to_tray', { enabled: settings.minimizeToTray });
-        }
+      const config = await invoke<any>('get_app_config');
+      if (config && config.minimizeToTray !== undefined) {
+        await invoke('set_minimize_to_tray', { enabled: config.minimizeToTray });
       }
     } catch (e) {
       console.error('Failed to sync minimize to tray on startup', e);
@@ -412,6 +661,9 @@ export class AppComponent implements OnInit, OnDestroy {
     if (this.pollInterval)       clearInterval(this.pollInterval);
     if (this.stressTimerInterval) clearInterval(this.stressTimerInterval);
     if (this.stressActive)       this.ryzenService.stopCpuStress();
+    if (this.scheduledExportInterval) {
+      clearInterval(this.scheduledExportInterval);
+    }
   }
 
   // ── Toast ──
@@ -441,6 +693,10 @@ export class AppComponent implements OnInit, OnDestroy {
     if (res.success && res.data) {
       this.cpuLimits = res.data;
       this.cpuErrorMsg = '';
+      if (this.cpuLimits.smart_fan_enabled && this.cpuLimits.smart_fan_active_level !== undefined) {
+        this.fanLevel = this.cpuLimits.smart_fan_active_level;
+        this.fanEnabled = true;
+      }
       if (res.data.cpu_name !== undefined && res.data.cpu_name !== null) {
         this.cpuName = res.data.cpu_name;
       }
@@ -473,6 +729,9 @@ export class AppComponent implements OnInit, OnDestroy {
   // ── CPU mode ──
 
   async applyCpuMode(mode: 'performance' | 'balanced' | 'silent' | 'bed') {
+    const label = mode === 'bed' ? 'Bed Mode' : mode.toUpperCase();
+    this.showToast(`Calibrating for ${label}...`, 'info');
+
     this.cpuMode = mode;
     if (mode === 'performance')                    this.cpuTdp = 55;
     else if (mode === 'balanced' || mode === 'bed') this.cpuTdp = 35;
@@ -480,14 +739,18 @@ export class AppComponent implements OnInit, OnDestroy {
 
     const res = await this.ryzenService.setMode(mode);
     if (res.success) {
-      this.showToast(`CPU Mode → ${mode === 'bed' ? 'Bed Mode' : mode.toUpperCase()}`, 'success');
+      await new Promise(resolve => setTimeout(resolve, 600));
+      this.showToast(`CPU Mode → ${label}`, 'success');
       this.pollCpuStatus();
+      await this.saveActiveProfileConfig();
     } else {
       this.showToast(res.message || 'Failed to set CPU mode.', 'error');
     }
   }
 
   async applyCustomTdp() {
+    this.showToast('Adjusting thermal limits...', 'info');
+
     this.cpuMode = 'custom';
     if (this.cpuTdp < 8)  this.cpuTdp = 8;
     if (this.cpuTdp > 55) this.cpuTdp = 55;
@@ -495,8 +758,10 @@ export class AppComponent implements OnInit, OnDestroy {
     if (this.cpuTempLimit > 95) this.cpuTempLimit = 95;
     const res = await this.ryzenService.setTdp(this.cpuTdp, this.cpuTempLimit);
     if (res.success) {
+      await new Promise(resolve => setTimeout(resolve, 600));
       this.showToast(`Limits set: TDP ${this.cpuTdp}W · Temp ${this.cpuTempLimit}°C`, 'success');
       this.pollCpuStatus();
+      await this.saveActiveProfileConfig();
     } else {
       this.showToast(res.message || 'Failed to set limits.', 'error');
     }
@@ -519,6 +784,8 @@ export class AppComponent implements OnInit, OnDestroy {
   }
 
   async applyFan() {
+    this.showToast(this.fanEnabled ? 'Calibrating fan velocity...' : 'Reverting fan to system control...', 'info');
+
     let level: string;
     if (this.fanEnabled) {
       const padded = String(this.fanLevel).padStart(2, '0');
@@ -529,15 +796,43 @@ export class AppComponent implements OnInit, OnDestroy {
     try {
       const res = await invoke<string>('set_fan_mode', { mode: level });
       console.log(`[Fan] ${res}`);
+      await new Promise(resolve => setTimeout(resolve, 600));
       this.showToast(this.fanEnabled ? `Fan → ${this.getRpm(this.fanLevel)} RPM` : 'Fan → Auto', 'success');
+      await this.saveActiveProfileConfig();
     } catch (err) {
       this.showToast(`Failed to set fan: ${err}`, 'error');
     }
   }
 
+  get fanMode(): 'hp-auto' | 'smart-auto' | 'manual' {
+    if (this.cpuLimits?.smart_fan_enabled) {
+      return 'smart-auto';
+    }
+    return this.fanEnabled ? 'manual' : 'hp-auto';
+  }
+
+  async setFanMode(mode: 'hp-auto' | 'smart-auto' | 'manual') {
+    if (mode === 'hp-auto') {
+      this.fanEnabled = false;
+      await this.fanCurveService.setEnabled(false);
+      await this.applyFan();
+    } else if (mode === 'smart-auto') {
+      this.fanEnabled = true;
+      await this.fanCurveService.setEnabled(true);
+      await this.saveActiveProfileConfig();
+    } else if (mode === 'manual') {
+      this.fanEnabled = true;
+      await this.fanCurveService.setEnabled(false);
+      await this.applyFan();
+    }
+  }
+
   async toggleFanControl() {
-    this.fanEnabled = !this.fanEnabled;
-    await this.applyFan();
+    if (this.fanMode === 'hp-auto') {
+      await this.setFanMode('manual');
+    } else {
+      await this.setFanMode('hp-auto');
+    }
   }
 
   // ── Profiles ──
@@ -688,6 +983,7 @@ export class AppComponent implements OnInit, OnDestroy {
       this.profileName = 'custom';
       this.cpuMode = 'custom';
       this.showToast('Custom TDP ready — adjust and apply.', 'info');
+      await this.saveActiveProfileConfig();
       return;
     }
     
@@ -720,6 +1016,8 @@ export class AppComponent implements OnInit, OnDestroy {
 
       if (this.fanEnabled) {
         await this.applyFan();
+      } else {
+        await this.saveActiveProfileConfig();
       }
     }
   }
@@ -802,5 +1100,14 @@ export class AppComponent implements OnInit, OnDestroy {
     } catch (e) {
       console.error('Failed to toggle widget window', e);
     }
+  }
+
+  onWarningAccepted() {
+    localStorage.setItem('ntk_disclaimer_accepted', 'true');
+    this.showWarningModal = false;
+  }
+
+  onWarningExit() {
+    this.showWarningModal = false;
   }
 }

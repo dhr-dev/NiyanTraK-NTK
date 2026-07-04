@@ -278,7 +278,7 @@ NiyanTraK now features an ultra-compact desktop companion widget and complete na
 - **TDP Selector Highlight Sync**: Stabilized the active TDP selector stage highlight by computing closest limits using `maxTdp` (`limits.fast_limit`) instead of real-time telemetry draw (`cpuTdp` / `limits.fast_value`), preventing the highlighted button from jumping when the CPU is idle.
 - **Temp Rings Label Legibility**: Shrunk the font weight of `.ring-val` and `.ring-lbl` inside circular gauges to `400 !important` (Normal weight), ensuring the tiny telemetry text inside the circles is perfectly crisp, non-bold, and easy to read.
 - **Dynamic Core Burn Allocator**: Overhauled the Core Burn Allocator grid inside `StressPanelComponent` (`stress-panel.component.ts`) to dynamically query and map exactly the local system's active logical threads utilizing `navigator.hardwareConcurrency` (e.g. rendering exactly 12 thread slots for Hexa-Core Hyperthreaded processors) instead of a hardcoded 16.
-- **Centralized Presets Configuration File**: Isolated the default standard profiles from direct TS hardcoding and relocated them into a single centralized configuration file `presets.config.ts` (`src/app/presets.config.ts`). Imported this file synchronously across both the main orchestrator (`app.component.ts`) and the overlay widget (`widget.component.ts`), enabling easy pre-build adjustments in a single location.
+- **Centralized Presets Configuration File**: Isolated the default standard profiles from direct TS hardcoding and relocated them into a single centralized configuration file `presets.json` (`src/app/config/presets.json`). Imported this file synchronously across both the main orchestrator (`app.component.ts`) and the overlay widget (`widget.component.ts`), enabling easy pre-build adjustments in a single JSON file.
 
 ### 8.4 Bezel Strip Widget Launcher Migration (2026-05-22)
 - **Widget Trigger Relocation**: Migrated the companion widget toggle trigger from a simple `+` button in the left Navigation Rail to a highly attractive right-edge "bezel strip" (ribbon) docked vertically alongside the existing red "STRESS" bezel.
@@ -304,10 +304,101 @@ NiyanTraK now features an ultra-compact desktop companion widget and complete na
 - **Angular-to-Tauri Decoupling**: The Angular frontend handles *only* the Tauri command invocation (`register_heart_click`), keeping all count, resetting, and filesystem writing logic safely in the Rust backend.
 - **File Export Location**: The logs are compiled and written as a formatted text file (`victus_deck_debug_logs.txt`) directly in the application's root installation folder (resolving `std::env::current_exe()` parent directory dynamically at runtime).
 
+---
+
+## 10. Advanced Mode and Collapsible Points Editor (2026-06-20)
+
+### 10.1 Advanced Fan Mode (Level 0 Unlocked)
+- **Advanced Checkbox**: Added a checkbox in the header next to the enable switch labeled "Advanced" with a warning sign (`⚠️`).
+- **Icon Animation**: Checking the checkbox triggers a keyframe scale-up and opacity animation (`danger-blink`) that flashes the danger icon exactly 3 times (400ms per blink).
+- **BIOS Level 0 Unlocking**:
+  - Enabling Advanced mode allows the lowest fan level to be configured to `0` (0 RPM / fan off).
+  - Sanitization logic is implemented when disabling Advanced mode: any point configured below level `8` is automatically reverted back to level `8` to prevent invalid states.
+  - The SVG Y-axis scale dynamically shifts its baseline to `0` RPM (when advanced is active) or `800` RPM (normally), updating horizontal grid lines reactively.
+  - Intermediate invalid BIOS levels (`1` to `7`) are skipped automatically during rounding and dragging, snapping points cleanly between `0` (fan off) and `8` (800 RPM).
+
+### 10.2 Dynamic Points Management & Collapsible Editor
+- **Collapsible Layout**: The Steering Coordinate Points editor card is collapsed by default (`pointsCollapsed = true`) and can be expanded by clicking the card header.
+- **Remove Points**: A `✕` button is rendered next to each point row when the curve has more than `3` points, letting users delete coordinate points they do not need.
+- **Add Points**: An `+ Add Point` button is displayed below the grid when the curve has fewer than `8` points.
+- **Gap-Based Point Insertion**: Adding a point automatically calculates the largest temperature gap between any two existing adjacent coordinate points and inserts the new point in the exact center of that gap, averaging both temperature and fan levels to maintain curve continuity.
+
+### 10.3 Premium Form Inputs & Custom Dropdowns (2026-06-21)
+- **Settings Custom Dropdown**: Replaced the native HTML `<select>` element for Scheduled Auto-Export with a custom, glassmorphic dropdown UI component. Staged options include Hover effects, double-light specularity highlights, a rotating arrow icon, and document-level click handler hooks using Angular `@HostListener` with `stopPropagation` to handle outside clicks.
+- **Responsive Layout & Width Scaling**: Integrated `@media (max-width: 750px)` breakpoint overrides to automatically stack dashboard columns vertically, collapse margins/paddings, and scale down telemetry metrics text/gages.
+- **Dynamic Sticky Header Monitor Strip**: Restructured `app.component.ts` layout to dynamically swap the monitor strip outside the viewport (fixed header) when maximized/fullscreen or inside the viewport (naturally scrolling) when window width/height is smaller. Added an `isSticky` input modifier to zero margins/paddings for structural alignment.
+- **Refresh Bezel Button**: Relocated peak values reset trigger to a dedicated neon indigo bezel strip on the right side of the window (offset top `10px`). Wired bezel click to reset telemetry peaks or discard unsaved custom curve points when viewing the fancurve screen.
+- **Win32 FFI Local Time Log Exporter**: Built FFI system structure definitions for Win32 `SYSTEMTIME` and imported `GetLocalTime` dynamically on Windows backend platforms to output timezone-aware localized timestamps (`YYYYMMDD_HHMMSS`) for manual exports, autostart scheduling, and shutdown handlers.
+
+---
+
+## 11. Core Efficiency and Telemetry Optimizations (2026-06-21)
+
+### 11.1 RyzenAdj Process Priority Tuning
+- **Windows Priority Class Override**: Modified `ryzen_adj.rs` process creation flags to combine `CREATE_NO_WINDOW` (`0x08000000`) and `BELOW_NORMAL_PRIORITY_CLASS` (`0x00004000`), yielding `0x08004000`.
+- **CPPC Optimization**: This priority downgrade prevents the Windows Collaborative Processor Performance Control (CPPC) scheduler from aggressively boosting CPU clock frequencies when the telemetry polling thread periodically queries `ryzenadj.exe` registers. It mitigates 15-20W CPU clock spikes, ensuring stable idle power consumption (~5W).
+
+### 11.2 Persistent Background PowerShell Session
+- **Process Creation Overhead Mitigation**: Spawning `powershell.exe` to run WMI-based fan speed operations via `OmenHwCtl.ps1` previously incurred heavy single-core startup costs (300ms–800ms) due to .NET CLR runtime initialization.
+- **In-Memory Shell Daemon (`ps_session.rs`)**:
+  - Implemented a persistent, thread-safe background PowerShell process using a global `OnceLock<Mutex<Option<PsSession>>>` structure.
+  - The shell is spawned once on-demand using `-NoProfile -NoExit -Command -` args, combined with `BELOW_NORMAL_PRIORITY_CLASS` process flags.
+  - Rust pipes command sequences directly to the persistent process's `stdin` and reads responses from its `stdout` via a custom string-sentinel synchronization handshake (`__PS_CMD_DONE__`).
+- Completely avoids shell startup overhead during fan level changes, reducing shift latency to sub-20ms and eliminating fan shifting CPU spikes.
+
+---
+
+## 12. Smart Auto Fan Curve Upgrades (v3.4.0) (2026-06-23)
+
+### 12.1 Stepped Lookup Implementation
+- **Discrete Step Mapping**: Modified `interpolate_fan_level` and `process_smart_fan` in `fan.rs` to operate strictly on discrete temperature thresholds. Discarded continuous linear interpolation to prevent minor, rapid temperature fluctuations from triggering constant fan speed/pitch changes, enhancing acoustic comfort.
+- **Sensor Glitch Filtering**: Filtered out invalid temperature readings (`≤ 20°C`) from rolling average calculations, protecting the system from sudden hardware reporting drops.
+- **Instant Spool-Up**: Preserved instant spool-up transitions bypassing the average delay when raw temperatures exceed `90°C` (the configured `instant_spool_temp` threshold) to safeguard CPU under high-thermal workloads.
+
+### 12.2 Graphical and Interface Enhancements
+- **Stepped SVG Rendering**: Updated `fan-curve-panel.component.ts` to compute and draw stepped fan curve paths (using horizontal and vertical `L` segments) instead of diagonal line/area segments.
+- **Dual Temperature Tracking Indicators**: Added a vertical red line for raw temperature and a yellow line/badge for the decider (average) temperature.
+- **Mean Temperature Badge Styling**: The yellow average badge is styled with a distinct overline bar (x̄) and offset vertically (`y="15"`) to prevent overlap with the red raw temperature badge (`y="2"`).
+- **Log Transition Indicators**: Log lines explicitly indicate shift directions, outputting `[⚡ Shifted Up]` or `[⚡ Shifted Down]` during threshold crossings.
+
+---
+
+## 13. NSIS Windows Installer Improvements (v3.5.0) (2026-06-23)
+
+### 13.1 Custom Uninstall Prompt
+- **Interactive Upgrade Path**: Implemented NSIS installer hooks via `hooks.nsh` and linked them in `tauri.conf.json`.
+- **Registry Detection**: The `NSIS_HOOK_PREINSTALL` macro queries the Windows Registry under `HKCU` and `HKLM` at `Software\Microsoft\Windows\CurrentVersion\Uninstall\com.dhruvil.niyantrak` to read `UninstallString` and `InstallLocation`.
+- **Uninstallation Dialog**: If an existing version is found, a MessageBox dialog is shown to the user asking whether they wish to uninstall the previous version before continuing.
+- **Synchronous Execution**: If the user confirms, the uninstaller is executed synchronously using `ExecWait` with the `_?=` switch (preventing the uninstaller from copying itself and exiting prematurely) before proceeding with the fresh installation.
 
 
 
+---
 
+## 14. Public Release Preparation & Safety Safeguards (v4.0.0-beta.1) (2026-07-04)
 
+### 14.1 Rebranding to NiyanTraK
+- **NiyanTraK Rebrand**: Renamed all occurrences of `victus-deck` to `niyantrak`/`NiyanTraK` (using the capitalization NTK) to reflect support for HP Pavilion Gaming and HP Omen series laptops.
+- **Package Configuration**: Updated `package.json` name to `"niyantrak"`.
+
+### 14.2 Registry BIOS Check & Startup Disclaimers
+- **System Information Registry Query**: Implemented `get_system_info` in Rust backend (`lib.rs`) querying `HARDWARE\\DESCRIPTION\\System\\BIOS` registry values (`SystemManufacturer` and `SystemProductName`) to determine if the device is a compatible HP laptop in <5ms.
+- **First-Launch Warning Modal**: Introduced a modal dialog on first launch (`AppComponent` lifecycle) showing a strict release of liability disclaimer and compatibility warning. Includes a 5-second countdown timer before the accept button is unlocked to force user awareness.
+
+### 14.3 Thermal Safety Overrides (Safeguards)
+- **Safe Clamping Logic**: Modified `process_smart_fan` and `get_cpu_status` in the Rust backend to intercept temperature telemetry.
+  - If CPU Temperature $\ge$ 95°C or APU Skin Temperature $\ge$ 56°C: Forces fan speeds to Level 39 (maximum fan speed).
+  - If CPU Temperature $\ge$ 90°C or APU Skin Temperature $\ge$ 52°C: Forces fan speeds to *at least* Level 30 (high/balanced fan speed).
+- **Manual Mode Coverage**: Applies safeguards to manual fan sliders as well as smart fan curve decisions. Skipped under HP BIOS Auto mode.
+
+### 14.4 UI Stabilization & Advanced limits Toggles
+- **Advanced Mode Renaming & Styling**: Renamed "Advanced Mode" to "Disable Safety Limits (Unlock 0 RPM)", styled in bold red font to emphasize danger.
+- **Synchronized Checkboxes**: Placed matching checkboxes in both the Fan Curve panel and Main UI Fan card, backed by real-time `localAdvanced` status synchronization and `DoCheck` checks in the Angular frontend.
+- **3-Second Countdown Warnings**: Checking either advanced toggle triggers a fullscreen warning overlay with a 3-second button countdown before manual override settings (like Level 0 RPM) are accepted and saved.
+- **UI Shift and Jitter Elimination**:
+  - Replaced `*ngIf` button/badge footer swaps with static DOM nodes toggled using CSS `[style.display]` to eliminate rendering height jumps.
+  - Replaced Range Slider `[disabled]` attribute with `[style.pointer-events]` to bypass browser-specific disabled scrollbar layout height alterations.
+  - Added a `1px` transparent border to default segment tab buttons to prevent layout shifting on active border classes.
+  - Updated the Reset Defaults button in the fan curve panel to a premium Teal (`#06b6d4`) color.
 
 

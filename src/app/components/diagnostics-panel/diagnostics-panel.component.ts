@@ -21,7 +21,7 @@ export interface DiagnosticsData {
       <!-- Header Row -->
       <div class="flex items-center justify-between">
         <div class="flex flex-col">
-          <h2 class="text-[13px] font-medium text-[#ccc] uppercase tracking-wider">Ryzen Diagnostics Dashboard</h2>
+          <h2 class="text-[13px] font-semibold text-white tracking-[0.02em]">Ryzen Diagnostics Dashboard</h2>
           <span class="text-[12px] text-[#888] font-normal mt-[2px]">Real-time hardware limit tables & thermal thresholds</span>
         </div>
         <div class="flex items-center gap-2 px-3 py-1 rounded-[4px] bg-[#161616] border border-border-muted">

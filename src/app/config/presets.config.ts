@@ -1,0 +1,19 @@
+export interface PresetProfile {
+  name: string;
+  powerLimit: number;
+  fan: string;
+  fanLevel: number;
+  fanLabel: string;
+  label: string;
+  tempLimit: number;
+  isPinned?: boolean;
+  isCustom?: boolean;
+}
+
+export const DEFAULT_PROFILES: PresetProfile[] = [
+  { name: 'battery', powerLimit: 12, fan: 'silent', fanLevel: 10, fanLabel: 'Silent', label: 'Battery Saver', tempLimit: 70 },
+  { name: 'laptop', powerLimit: 25, fan: 'balanced', fanLevel: 29, fanLabel: 'Quiet', label: 'Bed Mode', tempLimit: 70 },
+  { name: 'table', powerLimit: 35, fan: 'medium', fanLevel: 30, fanLabel: 'Med', label: 'Table Mode', tempLimit: 80 },
+  { name: 'performance', powerLimit: 45, fan: 'high', fanLevel: 34, fanLabel: 'High', label: 'Performance', tempLimit: 90 },
+  { name: 'extreme', powerLimit: 55, fan: 'max', fanLevel: 39, fanLabel: 'Max', label: 'Extreme', tempLimit: 90 }
+];
