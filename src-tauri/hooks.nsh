@@ -6,13 +6,13 @@
 
     # Read the uninstall string and install location from the registry
     # Check HKCU (per-user) first
-    ReadRegStr $0 HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\com.dhruvil.niyantrak" "UninstallString"
-    ReadRegStr $1 HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\com.dhruvil.niyantrak" "InstallLocation"
+    ReadRegStr $0 HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\com.dhrdev.niyantrak" "UninstallString"
+    ReadRegStr $1 HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\com.dhrdev.niyantrak" "InstallLocation"
 
     # Check HKLM (per-machine) if not found in HKCU
     ${If} $0 == ""
-        ReadRegStr $0 HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\com.dhruvil.niyantrak" "UninstallString"
-        ReadRegStr $1 HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\com.dhruvil.niyantrak" "InstallLocation"
+        ReadRegStr $0 HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\com.dhrdev.niyantrak" "UninstallString"
+        ReadRegStr $1 HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\com.dhrdev.niyantrak" "InstallLocation"
     ${EndIf}
 
     # If previous installation's uninstaller is found, prompt the user
