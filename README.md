@@ -92,3 +92,15 @@ To compile NiyanTraK from source, make sure you have the following installed:
 ## License
 
 This project is licensed under the [MIT License](LICENSE) - see the LICENSE file for details.
+
+---
+
+## Credits & Acknowledgements
+
+NiyanTraK relies on and is inspired by the following open-source hardware projects:
+
+- **[RyzenAdj](https://github.com/FlyGoat/RyzenAdj)** (`https://github.com/FlyGoat/RyzenAdj`): Developed by FlyGoat and contributors (licensed under GPL-3.0). It provides the underlying raw AMD APU power boundary registers control.
+- **[OmenHwCtl](https://github.com/GeographicCone/OmenHwCtl)** (`https://github.com/GeographicCone/OmenHwCtl`): Developed by GeographicCone and contributors (licensed under GPL-3.0). It provides the underlying HP BIOS WMI Embedded Controller commands (`OmenHwCtl.ps1`) for fan control operations.
+- **[fanControl](https://github.com/Giacomix02/fanControl)** (`https://github.com/Giacomix02/fanControl`): Developed by Giacomix02 (licensed under GPL-3.0). This project served as the initial reference and introduced us to utilizing OmenHwCtl Embedded Controller command mappings.
+
+Many thanks to the developers of these projects for their contribution to the PC hardware customization community!
