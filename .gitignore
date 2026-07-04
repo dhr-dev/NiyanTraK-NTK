@@ -40,3 +40,9 @@ testem.log
 # System files
 .DS_Store
 Thumbs.db
+
+# NiyanTraK local config & logs
+custom_presets.json
+stdout.txt
+stderr.txt
+rules.md
