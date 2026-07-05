@@ -1,9 +1,13 @@
-# NiyanTraK (NTK)
+# NiyanTraK (NTK) (Only Ryzen CPU support for now)
 
 > [!WARNING]
 > **SAFETY & LIABILITY DISCLAIMER:** This utility is capable of overriding low-level CPU power borders and Embedded Controller fan curves. Setting values incorrectly can cause thermal throttling or instability. By using this software, you assume all risks. The developer is NOT responsible for any hardware damage or data loss.
 
 NiyanTraK is a premium, open-source Windows hardware utility designed to customize CPU power limits and fan speeds on HP Victus, Omen, and Pavilion Gaming series laptops.
+
+> [!NOTE]
+> **AMD RYZEN PROCESSORS ONLY:** In this release, CPU power tuning and temperature telemetry query RyzenAdj registers directly. As a result, NTK is currently **AMD-exclusive**. Intel CPU support (via WMI/Hardware Monitor sensors) is planned for a future release.
+
 
 > [!IMPORTANT]
 > **ADMINISTRATOR ELEVATION REQUIRED:** Because this tool writes low-level registers via `RyzenAdj` and handles direct Embedded Controller (EC) communication through a persistent PowerShell daemon (`OmenHwCtl.ps1`), **you must run NiyanTraK as Administrator** to allow hardware queries and overrides to function.
