@@ -3,7 +3,7 @@
 > [!WARNING]
 > **SAFETY & LIABILITY DISCLAIMER:** This utility is capable of overriding low-level CPU power borders and Embedded Controller fan curves. Setting values incorrectly can cause thermal throttling or instability. By using this software, you assume all risks. The developer is NOT responsible for any hardware damage or data loss.
 
-NiyanTraK is a premium, open-source Windows hardware utility designed to unlock the full potential of AMD Ryzen APUs and customize fan speeds on HP Victus, Omen, and Pavilion Gaming series laptops.
+NiyanTraK is a premium, open-source Windows hardware utility designed to customize CPU power limits and fan speeds on HP Victus, Omen, and Pavilion Gaming series laptops.
 
 > [!IMPORTANT]
 > **ADMINISTRATOR ELEVATION REQUIRED:** Because this tool writes low-level registers via `RyzenAdj` and handles direct Embedded Controller (EC) communication through a persistent PowerShell daemon (`OmenHwCtl.ps1`), **you must run NiyanTraK as Administrator** to allow hardware queries and overrides to function.
@@ -37,16 +37,14 @@ All diagnostic logs, thermal decisions, and RyzenAdj telemetry exports are saved
 - **Shutdown Logs:** Written automatically upon system shutdown/app close to record runtime boundaries.
   - File: `shutdown_debug_logs_[timestamp].txt`
 
-> [!TIP]
-> **Diagnostics Shortcut (Easter Egg):** You can quickly export current runtime debug logs at any time by clicking the heart icon (`❤️`) in the footer **9 times**. It will trigger an instant compilation and save it directly to the root logs folder.
 
 ---
 
 ## Key Features
 
-- **Ryzen APU Tuning**: Refine RyzenAdj power thresholds (TDP limits, Temperature limits, APU Fast/Slow boundaries) dynamically.
+- **Ryzen CPU Tuning**: Refine RyzenAdj CPU power thresholds (TDP limits, Temperature limits) dynamically.
 - **Smart Auto Step-Curves**: Customize stepped smart fan curves operating on discrete temperature lookup coordinates for optimal acoustics.
-- **Dual-Sensor Safety Safeguards**: Automatically forces fan speeds to Level 39 (max speed) if the CPU reaches $\ge$ 95°C or the APU skin reaches $\ge$ 56°C. Sets speeds to at least Level 30 if CPU reaches $\ge$ 90°C or APU skin reaches $\ge$ 52°C.
+- **Dual-Sensor Safety Safeguards**: Automatically forces fan speeds to Level 39 (max speed) if the CPU reaches $\ge$ 95°C or the skin temperature reaches $\ge$ 56°C. Sets speeds to at least Level 30 if CPU reaches $\ge$ 90°C or skin temperature reaches $\ge$ 52°C.
 - **Persistent PowerShell Daemon**: Low-latency Embedded Controller writes bypass startup overheads (<20ms delay).
 - **First-Boot Verification**: Automatic Windows Registry queries check BIOS compatibility.
 

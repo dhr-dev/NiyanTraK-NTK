@@ -1,4 +1,4 @@
-import { Component, Input } from '@angular/core';
+import { Component, Input, Output, EventEmitter } from '@angular/core';
 import { CommonModule } from '@angular/common';
 
 @Component({
@@ -7,27 +7,40 @@ import { CommonModule } from '@angular/common';
   imports: [CommonModule],
   template: `
     <!-- TOP BAR -->
-    <header class="topbar">
+    <header class="topbar" [class.topbar--shifted]="isAboutPage">
       <div class="brand">
-        <img class="brand-logo" src="assets/icons/Workmark-transparent-2.png" alt="NiyanTraK">
-        <span class="brand-sep" *ngIf="cpuName">|</span>
-        <span class="brand-sub" *ngIf="cpuName">{{ cpuName }}</span>
+        <img class="brand-logo" [class.brand-logo--shifted]="isAboutPage" src="assets/icons/Workmark-transparent-2.png" alt="NiyanTraK">
+        <span class="brand-sep" *ngIf="cpuName && !isAboutPage">|</span>
+        <span class="brand-sub" *ngIf="cpuName && !isAboutPage">{{ cpuName }}</span>
       </div>
 
       <!-- DYNAMIC ISLAND CAPSULE -->
       <div class="dynamic-island-container">
-        <!-- Main Status Island -->
-        <div class="dynamic-island" [class.dynamic-island--active]="activeToast" [class.dynamic-island--success]="activeToast?.type === 'success'" [class.dynamic-island--error]="activeToast?.type === 'error'" [class.dynamic-island--info]="activeToast?.type === 'info'">
+        <!-- Main Status Island (morphs to GO BACK button on About page) -->
+        <div class="dynamic-island" 
+          [class.dynamic-island--active]="activeToast" 
+          [class.dynamic-island--success]="activeToast?.type === 'success'" 
+          [class.dynamic-island--error]="activeToast?.type === 'error'" 
+          [class.dynamic-island--info]="activeToast?.type === 'info'"
+          [class.dynamic-island--back]="isAboutPage && !activeToast"
+          (click)="isAboutPage && !activeToast ? goBack() : null"
+        >
           <ng-container *ngIf="!activeToast; else toastTemplate">
-            <!-- Idle state: displays active profile -->
-            <span class="island-icon">⚡</span>
-            <span class="island-label">{{ activeProfileLabel ? activeProfileLabel.toUpperCase() : 'MANUAL' }}</span>
+            <ng-container *ngIf="isAboutPage; else idleNormal">
+              <span class="island-icon" style="color: #f59e0b; font-size: 16px; font-weight: bold; transition: none;">&lt;-</span>
+              <span class="island-label" style="color: #f59e0b; transition: none;">GO BACK</span>
+            </ng-container>
+            <ng-template #idleNormal>
+              <!-- Idle state: displays active profile -->
+              <span class="island-icon">⚡</span>
+              <span class="island-label">{{ activeProfileLabel ? activeProfileLabel.toUpperCase() : 'MANUAL' }}</span>
+            </ng-template>
           </ng-container>
           <ng-template #toastTemplate>
             <!-- Toast morph state -->
             <span class="island-icon-toast">
               <ng-container *ngIf="activeToast.type === 'success'">✓</ng-container>
-              <ng-container *ngIf="activeToast.type === 'error'">⚠</ng-container>
+              <ng-container *ngIf="activeToast.type === 'error'">⚠️</ng-container>
               <ng-container *ngIf="activeToast.type === 'info'">
                 <svg class="island-spinner" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" width="10" height="10" style="display: block;">
                   <circle cx="12" cy="12" r="10" stroke="rgba(59, 130, 246, 0.2)"></circle>
@@ -63,9 +76,32 @@ import { CommonModule } from '@angular/common';
       flex-shrink: 0;
       user-select: none;
       position: relative;
+      transition: height 300ms cubic-bezier(0.34, 1.56, 0.64, 1), min-height 300ms cubic-bezier(0.34, 1.56, 0.64, 1), padding 300ms cubic-bezier(0.34, 1.56, 0.64, 1);
     }
-    .brand { display: flex; align-items: center; gap: 12px; }
-    .brand-logo { height: 102px; object-fit: contain; display: block; margin-left: -16px; }
+    .topbar--shifted {
+      height: 102px;
+      min-height: 102px;
+      padding: 12px 16px 4px 16px;
+    }
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .brand-logo {
+      height: 102px;
+      object-fit: contain;
+      display: block;
+      margin-left: -16px;
+      transform: scale(1);
+      transform-origin: left center;
+      transition: margin-left 300ms cubic-bezier(0.34, 1.56, 0.64, 1), transform 300ms cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+    .brand-logo--shifted {
+      margin-left: -16px;
+      transform: scale(1.65);
+    }
     .brand-sep { color: #333; font-size: 14px; font-weight: 300; margin: 0 -4px; }
     .brand-sub { font-size: 11px; color: #777; font-weight: 600; font-family: inherit; letter-spacing: 0.02em; }
     .status-pill {
@@ -132,6 +168,22 @@ import { CommonModule } from '@angular/common';
       border-color: rgba(245, 158, 11, 0.4);
       box-shadow: 0 4px 12px rgba(0,0,0,0.5), inset 0 1px 1px rgba(255,255,255,0.03), 0 0 12px rgba(245, 158, 11, 0.15);
       animation: island-entry 350ms cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
+    .dynamic-island--back {
+      border-color: rgba(245, 158, 11, 0.5) !important;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.5), inset 0 1px 1px rgba(255,255,255,0.03), 0 0 12px rgba(245, 158, 11, 0.25) !important;
+      color: #f59e0b !important;
+      cursor: pointer;
+      pointer-events: auto;
+    }
+    .dynamic-island--back .island-icon {
+      font-size: 16px !important;
+      color: #f59e0b !important;
+    }
+    .dynamic-island--back:hover {
+      background: rgba(245, 158, 11, 0.08) !important;
+      border-color: #f59e0b !important;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.6), inset 0 1px 1px rgba(255,255,255,0.03), 0 0 16px rgba(245, 158, 11, 0.4) !important;
     }
     
     .warning-pulse {
@@ -221,4 +273,10 @@ export class TopBarComponent {
   @Input() activeToast: any = null;
   @Input() cpuName: string = '';
   @Input() unsavedChanges: boolean = false;
+  @Input() isAboutPage: boolean = false;
+  @Output() back = new EventEmitter<void>();
+
+  goBack() {
+    this.back.emit();
+  }
 }

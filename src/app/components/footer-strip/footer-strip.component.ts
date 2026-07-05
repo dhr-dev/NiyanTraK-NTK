@@ -1,7 +1,5 @@
-import { Component, OnInit } from '@angular/core';
+import { Component } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { getVersion } from '@tauri-apps/api/app';
-import { invoke } from '@tauri-apps/api/core';
 
 @Component({
   selector: 'app-footer-strip',
@@ -10,7 +8,7 @@ import { invoke } from '@tauri-apps/api/core';
   template: `
     <!-- FOOTER -->
     <footer class="footer-strip">
-      <span class="v-letter">v</span><span class="version-num">{{ version }}</span> &nbsp;·&nbsp; Made with <span class="heart-clicker" (click)="onHeartClick()">❤️</span> by&nbsp;<span class="author-name">Dhruvil Gajjar</span>
+      <span class="v-letter">v</span><span class="version-num">{{ version }}</span> &nbsp;·&nbsp; Made with <span class="heart-icon">❤️</span> by&nbsp;<span class="author-name">Dhruvil Gajjar</span>
     </footer>
   `,
   styles: [`
@@ -36,33 +34,11 @@ import { invoke } from '@tauri-apps/api/core';
       color: #888;
       font-weight: 500;
     }
-    .heart-clicker {
-      cursor: default;
+    .heart-icon {
       display: inline-block;
-      transition: transform 150ms ease;
-    }
-    .heart-clicker:active {
-      transform: scale(1.3);
     }
   `]
 })
-export class FooterStripComponent implements OnInit {
-  version = '0.1.0';
-
-  async ngOnInit() {
-    try {
-      this.version = await getVersion();
-    } catch (e) {
-      console.warn('[Footer] Failed to fetch tauri version, using fallback:', e);
-    }
-  }
-
-  async onHeartClick() {
-    try {
-      const res = await invoke<string>('register_heart_click');
-      console.log('[Heart clicker]', res);
-    } catch (e) {
-      console.error('[Heart clicker error]', e);
-    }
-  }
+export class FooterStripComponent {
+  version = '4.0.0-beta.1';
 }

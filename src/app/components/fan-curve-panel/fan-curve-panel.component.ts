@@ -14,12 +14,7 @@ import { RyzenService, FanCurvePoint } from '../../ryzen.service';
         <div class="header-text">
           <div style="display: flex; align-items: center; gap: 8px;">
             <h2 class="section-title">Smart Auto Fan Curve</h2>
-            <!-- Live Fan Status Badge -->
-            <span class="live-speed-badge" [class.live-speed-badge--active]="activeFanRpm > 800">
-              ● Live: {{ activeFanRpm }} RPM
-            </span>
           </div>
-          <p class="section-subtitle">Double-click empty area to add point; double-click or right-click any point to remove.</p>
         </div>
         <div class="header-actions">
           <!-- Advanced Checkbox with Danger Sign -->
@@ -140,6 +135,11 @@ import { RyzenService, FanCurvePoint } from '../../ryzen.service';
             </text>
           </g>
         </svg>
+
+        <!-- CLI Overlay instructions inside the graph viewport -->
+        <div class="graph-instructions">
+          <div class="instruction-line">> DOUBLE-CLICK EMPTY SPACE TO ADD POINT &bull; DOUBLE-CLICK / RIGHT-CLICK POINT TO REMOVE</div>
+        </div>
       </div>
 
       <!-- Config & Parameter Sliders -->
@@ -319,7 +319,6 @@ import { RyzenService, FanCurvePoint } from '../../ryzen.service';
       padding-bottom: 8px;
     }
     .section-title { font-size: 13px; font-weight: 600; color: #fff; letter-spacing: 0.02em; }
-    .section-subtitle { font-size: 10px; color: #888; margin-top: 1px; }
     .header-actions { display: flex; align-items: center; gap: 10px; }
     
     .reset-btn {
@@ -337,21 +336,7 @@ import { RyzenService, FanCurvePoint } from '../../ryzen.service';
       color: #22d3ee;
     }
 
-    .live-speed-badge {
-      font-size: 9px;
-      font-weight: 700;
-      padding: 2px 6px;
-      border-radius: 4px;
-      background: rgba(255, 255, 255, 0.05);
-      border: 1px solid rgba(255, 255, 255, 0.1);
-      color: #aaa;
-      letter-spacing: 0.02em;
-    }
-    .live-speed-badge--active {
-      background: rgba(59, 130, 246, 0.1);
-      border-color: rgba(59, 130, 246, 0.25);
-      color: #3b82f6;
-    }
+
 
     /* ─── ADVANCED CHECKBOX ─── */
     .advanced-checkbox-label {
@@ -426,8 +411,26 @@ import { RyzenService, FanCurvePoint } from '../../ryzen.service';
       background: rgba(0, 0, 0, 0.25);
       border: 1px solid rgba(255, 255, 255, 0.05);
       border-radius: 10px;
-      padding: 6px;
+      padding: 30px 6px 6px 6px;
       position: relative;
+      margin-bottom: 12px;
+    }
+    .graph-instructions {
+      position: absolute;
+      left: 12px;
+      top: 10px;
+      pointer-events: none;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 3px;
+      font-family: 'JetBrains Mono', monospace;
+    }
+    .instruction-line {
+      font-size: 11px;
+      color: rgba(255, 255, 255, 0.85);
+      letter-spacing: 0.04em;
+      font-weight: 500;
     }
     .curve-svg {
       width: 100%; height: auto;
@@ -957,18 +960,18 @@ export class FanCurvePanelComponent implements OnInit, OnDestroy, DoCheck {
     if (limits && limits.tctl_value !== undefined) {
       this.currentTemp = Math.round(limits.tctl_value);
 
-      this.decisionTemp = limits.smart_fan_decision_temp !== undefined 
-        ? limits.smart_fan_decision_temp 
+      this.decisionTemp = limits.smart_fan_decision_temp !== undefined
+        ? limits.smart_fan_decision_temp
         : this.currentTemp;
-        
-      const isInstant = limits.smart_fan_is_instant !== undefined 
-        ? limits.smart_fan_is_instant 
+
+      const isInstant = limits.smart_fan_is_instant !== undefined
+        ? limits.smart_fan_is_instant
         : (this.config.enabled && this.currentTemp > this.config.instant_spool_temp);
-        
+
       const targetLevel = this.activeFanLevel;
       const targetRpm = this.activeFanRpm;
       const isSmartActive = this.config.enabled;
-      
+
       const now = new Date();
       const timestamp = now.toTimeString().split(' ')[0]; // HH:MM:SS
 
@@ -979,8 +982,8 @@ export class FanCurvePanelComponent implements OnInit, OnDestroy, DoCheck {
       }
 
       // Check if this poll triggered a fan speed level or mode shift
-      const isTriggered = lastEntry 
-        ? (lastEntry.targetLevel !== targetLevel || lastEntry.isSmartActive !== isSmartActive) 
+      const isTriggered = lastEntry
+        ? (lastEntry.targetLevel !== targetLevel || lastEntry.isSmartActive !== isSmartActive)
         : false;
 
       let shiftType: 'up' | 'down' | null = null;
@@ -1013,7 +1016,7 @@ export class FanCurvePanelComponent implements OnInit, OnDestroy, DoCheck {
         isTriggered,
         shiftType
       });
-      
+
       // Keep only logs from the last 2 minutes (120000 milliseconds)
       const cutoff = Date.now() - 120000;
       this.pollHistory = this.pollHistory.filter(h => h.timeMs >= cutoff);
@@ -1069,10 +1072,10 @@ export class FanCurvePanelComponent implements OnInit, OnDestroy, DoCheck {
       const avgSourcesStr = (!log.isInstant && log.avgSources && log.avgSources.length > 0)
         ? ` (${log.avgSources.join(', ')}°C)`
         : '';
-      const targetStr = log.isSmartActive 
+      const targetStr = log.isSmartActive
         ? (log.targetRpm > 0 ? `${log.targetRpm} RPM (Lvl ${log.targetLevel})` : '0 RPM (Off)')
         : 'Auto (HP)';
-      
+
       let shiftStr = '';
       if (log.isTriggered) {
         if (log.shiftType === 'up') {
@@ -1083,7 +1086,7 @@ export class FanCurvePanelComponent implements OnInit, OnDestroy, DoCheck {
           shiftStr = ' [⚡ Shifted]';
         }
       }
-      
+
       lines.push(`[${log.timestamp}] Raw: ${log.temp}°C | Decider: ${log.decisionTemp}°C (${mode}${avgSourcesStr}) | Target: ${targetStr}${shiftStr}`);
     }
     return lines.join('\n');
@@ -1100,7 +1103,7 @@ export class FanCurvePanelComponent implements OnInit, OnDestroy, DoCheck {
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
-    
+
     this.showToast.emit({ message: 'Fan logs exported successfully!', type: 'success' });
   }
 
@@ -1266,13 +1269,13 @@ export class FanCurvePanelComponent implements OnInit, OnDestroy, DoCheck {
   }
 
   getRpm(level: number): number {
-    if (level <= 0)                 return 0;
-    if (level <= 8)                 return 800;
-    if (level === 9)                return 1200;
+    if (level <= 0) return 0;
+    if (level <= 8) return 800;
+    if (level === 9) return 1200;
     if (level >= 10 && level <= 19) return 1600 + (level - 10) * 100;
-    if (level === 29)               return 4200;
+    if (level === 29) return 4200;
     if (level >= 20 && level <= 28) return 3200 + (level - 20) * 100;
-    if (level >= 30)                return 4800 + (level - 30) * 100;
+    if (level >= 30) return 4800 + (level - 30) * 100;
     return 800;
   }
 
@@ -1281,15 +1284,15 @@ export class FanCurvePanelComponent implements OnInit, OnDestroy, DoCheck {
     const pts = this.config.points;
     if (pts.length === 0) return '';
     const sorted = [...pts].sort((a, b) => a.temp - b.temp);
-    
+
     let path = '';
     const startX = this.getSvgX(sorted[0].temp);
     const startY = this.getSvgY(sorted[0].level);
     path += `M ${startX} ${startY}`;
-    
+
     for (let i = 0; i < sorted.length - 1; i++) {
-      const nextX = this.getSvgX(sorted[i+1].temp);
-      const nextY = this.getSvgY(sorted[i+1].level);
+      const nextX = this.getSvgX(sorted[i + 1].temp);
+      const nextY = this.getSvgY(sorted[i + 1].level);
       // Stepped path: horizontal line to the next temperature x-coord at the current level,
       // followed by a vertical line to the next level y-coord.
       path += ` L ${nextX} ${this.getSvgY(sorted[i].level)} L ${nextX} ${nextY}`;
@@ -1303,14 +1306,14 @@ export class FanCurvePanelComponent implements OnInit, OnDestroy, DoCheck {
     const sorted = [...pts].sort((a, b) => a.temp - b.temp);
     const startX = this.getSvgX(sorted[0].temp);
     const endX = this.getSvgX(sorted[sorted.length - 1].temp);
-    
+
     let lineParts = '';
     for (let i = 0; i < sorted.length - 1; i++) {
-      const nextX = this.getSvgX(sorted[i+1].temp);
-      const nextY = this.getSvgY(sorted[i+1].level);
+      const nextX = this.getSvgX(sorted[i + 1].temp);
+      const nextY = this.getSvgY(sorted[i + 1].level);
       lineParts += ` L ${nextX} ${this.getSvgY(sorted[i].level)} L ${nextX} ${nextY}`;
     }
-    
+
     return `M ${startX} 140 L ${startX} ${this.getSvgY(sorted[0].level)}${lineParts} L ${endX} 140 Z`;
   }
 
@@ -1323,11 +1326,11 @@ export class FanCurvePanelComponent implements OnInit, OnDestroy, DoCheck {
     const pts = this.config.points;
     if (pts.length === 0) return 140;
     const sorted = [...pts].sort((a, b) => a.temp - b.temp);
-    
+
     if (this.currentTemp < sorted[0].temp) {
       return this.getSvgY(sorted[0].level);
     }
-    
+
     let selectedLevel = sorted[0].level;
     for (const pt of sorted) {
       if (this.currentTemp >= pt.temp) {
@@ -1347,11 +1350,11 @@ export class FanCurvePanelComponent implements OnInit, OnDestroy, DoCheck {
     const pts = this.config.points;
     if (pts.length === 0) return 140;
     const sorted = [...pts].sort((a, b) => a.temp - b.temp);
-    
+
     if (this.decisionTemp < sorted[0].temp) {
       return this.getSvgY(sorted[0].level);
     }
-    
+
     let selectedLevel = sorted[0].level;
     for (const pt of sorted) {
       if (this.decisionTemp >= pt.temp) {
@@ -1371,27 +1374,27 @@ export class FanCurvePanelComponent implements OnInit, OnDestroy, DoCheck {
 
   onDrag(event: MouseEvent) {
     if (this.activeDragIndex === null) return;
-    
+
     const rect = this.svgEl.nativeElement.getBoundingClientRect();
     const mouseX = event.clientX - rect.left;
     const mouseY = event.clientY - rect.top;
-    
+
     // Scale SVG points mapping (500x160)
     const svgX = (mouseX / rect.width) * 500;
     const svgY = (mouseY / rect.height) * 160;
-    
+
     const newTemp = this.getTempFromX(svgX);
     const newLevel = this.getLevelFromY(svgY);
-    
+
     const pts = this.config.points;
     const idx = this.activeDragIndex;
-    
+
     // Constrain temp movement to keep points sequential
     const minT = idx > 0 ? pts[idx - 1].temp + 1 : 30;
     const maxT = idx < pts.length - 1 ? pts[idx + 1].temp - 1 : 100;
-    
+
     const minLvl = this.config.advanced ? 0 : 8;
-    
+
     pts[idx].temp = Math.max(minT, Math.min(maxT, newTemp));
     pts[idx].level = Math.max(minLvl, Math.min(39, newLevel));
   }
@@ -1424,17 +1427,17 @@ export class FanCurvePanelComponent implements OnInit, OnDestroy, DoCheck {
   // Graph Double-Click to Add Points
   onSvgDoubleClick(event: MouseEvent) {
     if (this.config.points.length >= 8) return;
-    
+
     const rect = this.svgEl.nativeElement.getBoundingClientRect();
     const mouseX = event.clientX - rect.left;
     const mouseY = event.clientY - rect.top;
-    
+
     const svgX = (mouseX / rect.width) * 500;
     const svgY = (mouseY / rect.height) * 160;
-    
+
     const newTemp = this.getTempFromX(svgX);
     const newLevel = this.getLevelFromY(svgY);
-    
+
     // Check if a point at this temperature already exists
     const exists = this.config.points.some(pt => pt.temp === newTemp);
     if (exists) return;
@@ -1466,19 +1469,19 @@ export class FanCurvePanelComponent implements OnInit, OnDestroy, DoCheck {
   addPoint() {
     if (this.config.points.length >= 8) return;
     const pts = [...this.config.points].sort((a, b) => a.temp - b.temp);
-    
+
     let maxGap = 0;
     let insertIndex = 0;
     let insertTemp = 60;
     let insertLevel = 20;
 
     for (let i = 0; i < pts.length - 1; i++) {
-      const gap = pts[i+1].temp - pts[i].temp;
+      const gap = pts[i + 1].temp - pts[i].temp;
       if (gap > maxGap) {
         maxGap = gap;
         insertIndex = i;
-        insertTemp = Math.round((pts[i].temp + pts[i+1].temp) / 2);
-        insertLevel = Math.round((pts[i].level + pts[i+1].level) / 2);
+        insertTemp = Math.round((pts[i].temp + pts[i + 1].temp) / 2);
+        insertLevel = Math.round((pts[i].level + pts[i + 1].level) / 2);
       }
     }
 

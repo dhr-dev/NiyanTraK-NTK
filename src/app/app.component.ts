@@ -22,6 +22,7 @@ import { SettingsPanelComponent } from './components/settings-panel/settings-pan
 import { WidgetComponent } from './components/widget/widget.component';
 import { FanCurvePanelComponent } from './components/fan-curve-panel/fan-curve-panel.component';
 import { WarningModalComponent } from './components/warning-modal/warning-modal.component';
+import { AboutPanelComponent } from './components/about-panel/about-panel.component';
 
 @Component({
   selector: 'app-root',
@@ -42,7 +43,8 @@ import { WarningModalComponent } from './components/warning-modal/warning-modal.
     SettingsPanelComponent,
     WidgetComponent,
     FanCurvePanelComponent,
-    WarningModalComponent
+    WarningModalComponent,
+    AboutPanelComponent
   ],
   template: `
     <ng-container *ngIf="isWidget; else fullAppShell">
@@ -66,15 +68,17 @@ import { WarningModalComponent } from './components/warning-modal/warning-modal.
           [activeToast]="activeToast"
           [cpuName]="cpuName"
           [unsavedChanges]="fanCurveDirty"
+          [isAboutPage]="activePage === 'about'"
+          (back)="changePage('quick')"
         ></app-top-bar>
 
         <!-- MAIN CONTAINER -->
         <div class="main-container">
 
           <!-- LEFT: NAV RAIL -->
-          <app-nav-rail [activePage]="activePage" (pageChange)="changePage($event)"></app-nav-rail>
+          <app-nav-rail *ngIf="activePage !== 'about'" [activePage]="activePage" (pageChange)="changePage($event)"></app-nav-rail>
 
-          <div class="main-frame-body">
+          <div class="main-frame-body" [class.main-frame-body--blended]="activePage === 'about'">
             <!-- STRESS BANNER -->
             <app-stress-banner
               [active]="stressActive"
@@ -84,7 +88,7 @@ import { WarningModalComponent } from './components/warning-modal/warning-modal.
             ></app-stress-banner>
 
             <!-- MONITOR STRIP (Sticky Mode, maximized or fullscreen) -->
-            <app-monitor-strip *ngIf="isStickyMonitor"
+            <app-monitor-strip *ngIf="isStickyMonitor && activePage !== 'about'"
               [metrics]="monitorMetrics"
               [peakFast]="peakFastPpt"
               [peakSlow]="peakSlowPpt"
@@ -118,7 +122,7 @@ import { WarningModalComponent } from './components/warning-modal/warning-modal.
             <!-- VIEWPORT: SCROLLABLE PAGES -->
             <main class="viewport">
               <!-- MONITOR STRIP (Non-Sticky Scrollable Mode, when not maximized) -->
-              <app-monitor-strip *ngIf="!isStickyMonitor"
+              <app-monitor-strip *ngIf="!isStickyMonitor && activePage !== 'about'"
                 [metrics]="monitorMetrics"
                 [peakFast]="peakFastPpt"
                 [peakSlow]="peakSlowPpt"
@@ -183,8 +187,11 @@ import { WarningModalComponent } from './components/warning-modal/warning-modal.
               <!-- SYSTEM SETTINGS PAGE -->
               <app-settings-panel *ngIf="activePage === 'settings'" (showToast)="showToast($event.message, $event.type)"></app-settings-panel>
 
-              <!-- FAN CURVE PANEL -->
+               <!-- FAN CURVE PANEL -->
               <app-fan-curve-panel *ngIf="activePage === 'fancurve'" (showToast)="showToast($event.message, $event.type)" (unsavedChanges)="fanCurveDirty = $event"></app-fan-curve-panel>
+
+              <!-- ABOUT PANEL -->
+              <app-about-panel *ngIf="activePage === 'about'" (showToast)="showToast($event.message, $event.type)"></app-about-panel>
 
             </main>
 
@@ -237,6 +244,13 @@ import { WarningModalComponent } from './components/warning-modal/warning-modal.
       border-top-left-radius: 14px;
       overflow: hidden;
       position: relative;
+      transition: all 150ms ease;
+    }
+    .main-frame-body--blended {
+      border-top: none !important;
+      border-left: none !important;
+      border-top-left-radius: 0 !important;
+      background: #0d0d0d !important;
     }
 
     /* ─── VIEWPORT ─── */
@@ -313,7 +327,7 @@ export class AppComponent implements OnInit, OnDestroy {
   systemInfo: { manufacturer: string; model: string; isHp: boolean } | null = null;
 
   // Navigation
-  activePage: 'quick' | 'stress' | 'settings' | 'fancurve' = 'quick';
+  activePage: 'quick' | 'stress' | 'settings' | 'fancurve' | 'about' = 'quick';
   fanCurveDirty = false;
   isWidget = false;
   profilesOpen = true;
@@ -427,7 +441,7 @@ export class AppComponent implements OnInit, OnDestroy {
 
   // ── Helpers ──
 
-  changePage(page: 'quick' | 'stress' | 'settings' | 'fancurve') {
+  changePage(page: 'quick' | 'stress' | 'settings' | 'fancurve' | 'about') {
     this.activePage = page;
     this.fanCurveDirty = false;
   }

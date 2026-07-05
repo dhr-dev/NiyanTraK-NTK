@@ -124,7 +124,7 @@ Profiles are predefined system configurations designed for specific power and ac
 
 ## 5. UI Architecture — Standalone Component Decomposition
 
-The user interface has been decomposed from a single monolithic file into a decoupled, modular hierarchy consisting of **10 standalone Angular components** nested under `src/app/components/`. 
+The user interface has been decomposed from a single monolithic file into a decoupled, modular hierarchy consisting of **11 standalone Angular components** nested under `src/app/components/`. 
 
 The parent `AppComponent` remains the central state orchestrator, managing background polling loops, RyzenService integrations, and Tauri IPC command dispatches. Data is passed down to child elements via `@Input()`, and user interactions are piped back up to the orchestrator via `@Output() / EventEmitter` bindings.
 
@@ -140,6 +140,7 @@ The parent `AppComponent` remains the central state orchestrator, managing backg
 *   **CPUPowerPanelComponent (`app-cpu-power-panel`)**: Power limit card hosting active preset mode badge, exact watt custom TDP slider, and Apply controls.
 *   **StressPanelComponent (`app-stress-panel`)**: FPU workload configuration view hosting segmented presets for duration and intensity, along with a 16-thread Core Burn simulator grid.
 *   **FooterStripComponent (`app-footer-strip`)**: Bottom-anchored credit and version notice.
+*   **AboutPanelComponent (`app-about-panel`)**: General application information view, hosting software credits and safety warnings.
 
 ### Scoped Style Encapsulation & Host Layouts
 1. **Style Isolation**: All CSS rules are encapsulated locally within each child component's `@Component.styles` attribute block using pure, vanilla CSS to maintain 100% design fidelity.
@@ -298,13 +299,6 @@ NiyanTraK now features an ultra-compact desktop companion widget and complete na
 - **2-Minute Sliding Time Window**: Keeps only entries generated within the last **2 minutes (120 seconds)**. The buffer dynamically drops older entries upon new log insertions or log fetch requests utilizing an in-place `buffer.retain(...)` cleanup scan.
 - **Application Instrumentation**: Core systems (RyzenAdj power limiters, fan controllers, executor profiles, and stress workload pipelines) invoke `crate::core::logger::add_log(msg)` directly to record telemetry and state adjustments.
 
-### 9.2 Heart-Click Easter Egg Log Exporter
-- **Atomic Heart Tracker**: Keeps track of heart click events inside Tauri using a thread-safe atomic counter (`HEART_CLICKS: AtomicU32`).
-- **9-Click Trigger**: Clicking the heart emoji (`❤️`) in the footer **9 times** triggers the log export. 
-- **Angular-to-Tauri Decoupling**: The Angular frontend handles *only* the Tauri command invocation (`register_heart_click`), keeping all count, resetting, and filesystem writing logic safely in the Rust backend.
-- **File Export Location**: The logs are compiled and written as a formatted text file (`victus_deck_debug_logs.txt`) directly in the application's root installation folder (resolving `std::env::current_exe()` parent directory dynamically at runtime).
-
----
 
 ## 10. Advanced Mode and Collapsible Points Editor (2026-06-20)
 

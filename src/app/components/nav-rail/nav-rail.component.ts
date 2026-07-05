@@ -44,6 +44,14 @@ import { CommonModule } from '@angular/common';
           </svg>
           <span class="nav-label">Settings</span>
         </button>
+
+        <!-- About tab button -->
+        <button class="nav-btn" [class.nav-btn--active]="activePage === 'about'" (click)="setPage('about')" title="About NiyanTraK">
+          <svg viewBox="0 0 24 24" fill="currentColor" width="20" height="20">
+            <path d="M12 12a5 5 0 1 0 0-10 5 5 0 0 0 0 10zm0 2c-4.42 0-8 2.24-8 5v1c0 .55.45 1 1 1h14c.55 0 1-.45 1-1v-1c0-2.76-3.58-5-8-5z"/>
+          </svg>
+          <span class="nav-label">About</span>
+        </button>
       </div>
     </nav>
   `,
@@ -75,25 +83,26 @@ import { CommonModule } from '@angular/common';
       border-radius: 10px;
       border: none;
       background: transparent;
-      color: #444;
+      color: #888;
       display: flex;
       flex-direction: column;
       align-items: center;
       justify-content: center;
       gap: 3px;
+      cursor: pointer;
       transition: background 150ms ease, color 150ms ease;
     }
-    .nav-btn:hover { background: #161616; color: #aaa; }
+    .nav-btn:hover { background: #161616; color: #fff; }
     .nav-btn--active { background: #1a2a3a; color: #3b82f6; }
     .nav-btn--active:hover { background: #1e3040; }
     .nav-label { font-size: 8px; font-weight: 600; letter-spacing: 0.02em; text-transform: uppercase; }
   `]
 })
 export class NavRailComponent {
-  @Input() activePage: 'quick' | 'stress' | 'settings' | 'fancurve' = 'quick';
-  @Output() pageChange = new EventEmitter<'quick' | 'stress' | 'settings' | 'fancurve'>();
+  @Input() activePage: 'quick' | 'stress' | 'settings' | 'fancurve' | 'about' = 'quick';
+  @Output() pageChange = new EventEmitter<'quick' | 'stress' | 'settings' | 'fancurve' | 'about'>();
 
-  setPage(page: 'quick' | 'stress' | 'settings' | 'fancurve') {
+  setPage(page: 'quick' | 'stress' | 'settings' | 'fancurve' | 'about') {
     this.activePage = page;
     this.pageChange.emit(page);
   }

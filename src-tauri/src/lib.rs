@@ -323,31 +323,7 @@ fn get_local_timestamp() -> String {
     }
 }
 
-use std::sync::atomic::AtomicU32;
-static HEART_CLICKS: AtomicU32 = AtomicU32::new(0);
 
-#[tauri::command]
-fn register_heart_click(app: tauri::AppHandle) -> Result<String, String> {
-    let clicks = HEART_CLICKS.fetch_add(1, Ordering::Relaxed) + 1;
-    if clicks >= 9 {
-        HEART_CLICKS.store(0, Ordering::Relaxed);
-        let logs = core::logger::get_recent_logs();
-        if let Ok(mut doc_dir) = app.path().document_dir() {
-            doc_dir.push("NTK");
-            if let Err(e) = std::fs::create_dir_all(&doc_dir) {
-                return Err(format!("Failed to create NTK directory: {}", e));
-            }
-            let timestamp_str = get_local_timestamp();
-            let log_file = doc_dir.join(format!("debug_logs_{}.txt", timestamp_str));
-            if let Err(e) = std::fs::write(&log_file, &logs) {
-                return Err(format!("Failed to write debug log: {}", e));
-            }
-            return Ok(format!("Logs successfully exported to {}", log_file.to_string_lossy()));
-        }
-        return Err("Failed to resolve Documents directory".to_string());
-    }
-    Ok(format!("Click registered ({}/9)", clicks))
-}
 
 #[tauri::command]
 fn export_debug_logs(app: tauri::AppHandle, is_scheduled: bool, timestamp: String) -> Result<String, String> {
@@ -492,6 +468,7 @@ fn get_system_info() -> SystemInfo {
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     match tauri::Builder::default()
+        .plugin(tauri_plugin_opener::init())
         .manage(AppState::default())
         .invoke_handler(tauri::generate_handler![
             run_profile,
@@ -506,7 +483,6 @@ pub fn run() {
             load_custom_presets,
             set_minimize_to_tray,
             get_minimize_to_tray,
-            register_heart_click,
             set_smart_fan_config,
             get_smart_fan_config,
             export_debug_logs,
