@@ -10,6 +10,15 @@ NiyanTraK is a premium, open-source Windows hardware utility designed to customi
 
 ---
 
+## Preview & Screenshots
+
+<div align="center">
+  <img src="docs/screenshots/dashboard.png" alt="NiyanTraK Dashboard" width="48%"/>
+  <img src="docs/screenshots/fancurve.png" alt="NiyanTraK Fan Curve" width="48%"/>
+</div>
+
+---
+
 ## Project Status: Beta Rollout
 NiyanTraK is currently in an active **Beta** stage. While it has been extensively tested, low-level hardware communication can behave differently across BIOS revisions. Please monitor your system telemetry when applying custom settings.
 
