@@ -24,9 +24,9 @@ NiyanTraK is currently in an active **Beta** stage. While it has been extensivel
 
 ### Tested & Verified Hardware
 The utility has been successfully tested on the following laptop models:
-- **HP Victus 16** (AMD Ryzen 5 5600H)
+- **HP Victus 15 / 16** (AMD Ryzen 5 5600H)
 - **HP Pavilion Gaming** (AMD Ryzen 5 5600H)
-- **HP Victus 16** (AMD Ryzen 5 8645HS)
+- **HP Victus 15 / 16** (AMD Ryzen 5 8645HS)
 
 *Note: While designed for HP laptops, other systems can override safety block limits at their own risk using the "Disable Safety Limits" toggle in the interface.*
 
